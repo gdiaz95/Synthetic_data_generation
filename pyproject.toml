@@ -10,7 +10,8 @@ requires-python = ">=3.10, <3.14"
 dependencies = [
     "pandas (>=2.3.3,<3.0.0)",
     "ucimlrepo (>=0.0.7,<0.0.8)",
-    "sdv (>=1.27.0,<2.0.0)"
+    "sdv (>=1.27.0,<2.0.0)",
+    "kaleido (>=1.1.0,<2.0.0)"
 ]
 
 [tool.poetry]
