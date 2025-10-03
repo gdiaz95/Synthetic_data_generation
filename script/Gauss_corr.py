@@ -142,9 +142,9 @@ def main():
     """Main function to orchestrate the iterative synthetic data pipeline."""
     # --- Configuration ---
     TOTAL_ITERATIONS = 10
-    METADATA_PATH = './metadata.json'
-    BASE_REPORT_DIR = './reports/Gaussian_correlated/'
-    BASE_IMAGE_DIR = './images/Gaussian_correlated/'
+    METADATA_PATH = './../metadata.json'
+    BASE_REPORT_DIR = './../reports/Gaussian_correlated/'
+    BASE_IMAGE_DIR = './../images/Gaussian_correlated/'
 
     # --- Initial Setup ---
     original_adult_df, metadata = load_and_prepare_data(METADATA_PATH)
@@ -161,7 +161,7 @@ def main():
         print(f"\nIteration {i}: Generating new synthetic sample using custom method...")
         synthetic_data = generate_synthetic_data_custom(
             training_data=current_training_data,
-            original_data=original_adult_df
+            original_data=current_training_data
         )
         
         # Evaluation and plotting functions are called as before
