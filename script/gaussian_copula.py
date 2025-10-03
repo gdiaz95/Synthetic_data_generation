@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 This script performs an iterative pipeline for generating and evaluating
-synthetic data using the Gaussian Copula model. It will loop 10 times,
-with each iteration training on the output of the previous one, while
-always evaluating against the original data.
+synthetic data using the CTGAN model. This version includes the latest
+metadata handling to prevent warnings and can resume from any iteration.
 """
 
 # --------------------------------------------------------------------------
@@ -15,42 +14,57 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from ucimlrepo import fetch_ucirepo
-from sdv.metadata import SingleTableMetadata
+# UPDATED: Import the new Metadata class
+from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
-from sdv.single_table import GaussianCopulaSynthesizer
+from sdv.single_table import CTGANSynthesizer
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
 
 # --------------------------------------------------------------------------
 # 2. FUNCTION DEFINITIONS
 # --------------------------------------------------------------------------
 
-def load_and_prepare_data():
+# UPDATED: This function now saves/loads metadata to prevent warnings.
+def load_and_prepare_data(metadata_path):
     """
-    Fetches the UCI Adult dataset, prepares the DataFrame, and detects metadata.
+    Fetches the UCI Adult dataset and prepares the data. It loads metadata
+    from a file if it exists, otherwise it detects and saves it.
     """
     print("Loading and preparing original dataset...")
     adult = fetch_ucirepo(id=2)
     adult_df = pd.concat([adult.data.features, adult.data.targets], axis=1)
     adult_df['income'] = adult_df['income'].str.strip().str.replace('.', '', regex=False)
     
-    metadata = SingleTableMetadata()
-    metadata.detect_from_dataframe(data=adult_df)
+    if os.path.exists(metadata_path):
+        print(f"Loading metadata from '{metadata_path}'...")
+        # This is the corrected line
+        metadata = Metadata.load_from_json(filepath=metadata_path)
+    else:
+        print("Detecting metadata from data...")
+        metadata = Metadata()
+        metadata.detect_table_from_dataframe(
+            table_name='adult_data',
+            data=adult_df
+        )
+        metadata.save_to_json(filepath=metadata_path)
+        print(f"Metadata detected and saved to '{metadata_path}'.")
+
     print("Dataset loaded successfully.")
     return adult_df, metadata
 
+# UPDATED: This function can now load a model from any iteration.
 def load_or_train_synthesizer(training_data, metadata, model_path, iteration):
     """
-    Loads a synthesizer for the first iteration if it exists. For all subsequent
-    iterations, it trains a new GaussianCopulaSynthesizer and saves it.
+    Loads a synthesizer from the specified path if it exists for the current
+    iteration. Otherwise, it trains a new synthesizer and saves it.
     """
-    if iteration == 1 and os.path.exists(model_path):
+    if os.path.exists(model_path):
         print(f"Iteration {iteration}: Found existing model at '{model_path}'. Loading...")
         synthesizer = load_synthesizer(model_path)
         print("Model loaded successfully.")
     else:
-        print(f"Iteration {iteration}: Training a new model...")
-        # CHANGED: Use GaussianCopulaSynthesizer
-        synthesizer = GaussianCopulaSynthesizer(metadata)
+        print(f"Iteration {iteration}: No model found for this iteration. Training a new model...")
+        synthesizer = CTGANSynthesizer(metadata, verbose=True)
         synthesizer.fit(training_data)
         print(f"Training complete. Saving model to '{model_path}'...")
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
@@ -60,13 +74,11 @@ def load_or_train_synthesizer(training_data, metadata, model_path, iteration):
 
 def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path):
     """
-    Generates diagnostic and quality reports against the original real data
-    and saves them to a single JSON file.
+    Generates diagnostic and quality reports and saves them to a single JSON file.
     """
     print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
     quality_report = evaluate_quality(original_real_data, synthetic_data, metadata)
-
     combined_report_data = {
         'diagnostic_report': {'properties': diagnostic_report.get_properties().to_dict('records')},
         'quality_report': {
@@ -78,7 +90,6 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
             }
         }
     }
-
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, 'w') as f:
         json.dump(combined_report_data, f, indent=4)
@@ -86,8 +97,7 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
 
 def generate_and_save_plots(original_real_data, synthetic_data, metadata, image_dir):
     """
-    Generates and saves distribution comparison plots for every column against
-    the original real data.
+    Generates and saves distribution comparison plots for every column.
     """
     os.makedirs(image_dir, exist_ok=True)
     print(f"Saving comparison plots to '{image_dir}' directory...")
@@ -105,7 +115,6 @@ def generate_and_save_plots(original_real_data, synthetic_data, metadata, image_
             sns.countplot(data=combined_df, x=column, hue='Source')
             plt.title(f'Categorical Distribution: {column}', fontsize=16)
             plt.xticks(rotation=45, ha='right')
-
         plt.legend()
         plt.tight_layout()
         file_path = os.path.join(image_dir, f'{column}.png')
@@ -117,19 +126,20 @@ def generate_and_save_plots(original_real_data, synthetic_data, metadata, image_
 # 3. MAIN EXECUTION
 # --------------------------------------------------------------------------
 
+# UPDATED: The main function now defines and passes the metadata path.
 def main():
     """
     Main function to orchestrate the iterative synthetic data pipeline.
     """
     # --- Configuration ---
     TOTAL_ITERATIONS = 10
-    # CHANGED: Updated directory names for Gaussian Copula results
-    BASE_MODEL_DIR = './../models/GaussianCopula/'
-    BASE_REPORT_DIR = './../reports/GaussianCopula/'
-    BASE_IMAGE_DIR = './../images/GaussianCopula/'
+    METADATA_PATH = './../metadata.json' 
+    BASE_MODEL_DIR = './../models/CTGAN/'
+    BASE_REPORT_DIR = './../reports/CTGAN/'
+    BASE_IMAGE_DIR = './../images/CTGAN/'
 
     # --- Initial Setup ---
-    original_adult_df, metadata = load_and_prepare_data()
+    original_adult_df, metadata = load_and_prepare_data(METADATA_PATH)
     current_training_data = original_adult_df.copy()
 
     # --- Iteration Loop ---

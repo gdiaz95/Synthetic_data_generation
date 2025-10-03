@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This script performs an iterative pipeline for generating and evaluating
-synthetic data using the CTGAN model. This version includes the latest
+synthetic data using the TVAE model. This version includes the latest
 metadata handling to prevent warnings and can resume from any iteration.
 """
 
@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
-from sdv.single_table import CTGANSynthesizer
+from sdv.single_table import TVAESynthesizer
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
 
 # --------------------------------------------------------------------------
@@ -63,7 +63,7 @@ def load_or_train_synthesizer(training_data, metadata, model_path, iteration):
         print("Model loaded successfully.")
     else:
         print(f"Iteration {iteration}: No model found for this iteration. Training a new model...")
-        synthesizer = CTGANSynthesizer(metadata, verbose=True)
+        synthesizer = TVAESynthesizer(metadata)
         synthesizer.fit(training_data)
         print(f"Training complete. Saving model to '{model_path}'...")
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
@@ -72,9 +72,7 @@ def load_or_train_synthesizer(training_data, metadata, model_path, iteration):
     return synthesizer
 
 def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path):
-    """
-    Generates diagnostic and quality reports and saves them to a single JSON file.
-    """
+    """Generates and saves diagnostic and quality reports."""
     print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
     quality_report = evaluate_quality(original_real_data, synthetic_data, metadata)
@@ -95,9 +93,7 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
     print(f"Combined report saved successfully.")
 
 def generate_and_save_plots(original_real_data, synthetic_data, metadata, image_dir):
-    """
-    Generates and saves distribution comparison plots for every column.
-    """
+    """Generates and saves distribution comparison plots."""
     os.makedirs(image_dir, exist_ok=True)
     print(f"Saving comparison plots to '{image_dir}' directory...")
     for column in original_real_data.columns:
@@ -127,15 +123,13 @@ def generate_and_save_plots(original_real_data, synthetic_data, metadata, image_
 
 # UPDATED: The main function now defines and passes the metadata path.
 def main():
-    """
-    Main function to orchestrate the iterative synthetic data pipeline.
-    """
+    """Main function to orchestrate the iterative synthetic data pipeline."""
     # --- Configuration ---
     TOTAL_ITERATIONS = 10
     METADATA_PATH = './../metadata.json' 
-    BASE_MODEL_DIR = './../models/CTGAN/'
-    BASE_REPORT_DIR = './../reports/CTGAN/'
-    BASE_IMAGE_DIR = './../images/CTGAN/'
+    BASE_MODEL_DIR = './../models/TVAE/'
+    BASE_REPORT_DIR = './../reports/TVAE/'
+    BASE_IMAGE_DIR = './../images/TVAE/'
 
     # --- Initial Setup ---
     original_adult_df, metadata = load_and_prepare_data(METADATA_PATH)
