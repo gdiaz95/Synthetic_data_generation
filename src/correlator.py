@@ -143,56 +143,71 @@ def empirical_cdf_categorical_column(column, sorted_labels, seed=None, treat_nan
 
 
 def transform_dataset_from_gaussian(z_df, df_original):
-    categorical_columns = []
-    integer_columns = []
-    decimal_columns = []
+    """
+    Transforms a DataFrame of correlated Gaussian samples back to the original
+    data's domain, preserving marginal distributions and enforcing original data types.
+    """
+    print("Transforming data from Gaussian space...")
 
-    for col_name, col_dtype in df_original.dtypes.items():
-        if col_dtype == "object":
-            categorical_columns.append(col_name)
+    # --- Step 1: Efficiently classify columns based on their data type ---
+    # This is cleaner than looping through dtypes.
+    categorical_cols = df_original.select_dtypes(include=['object', 'category']).columns.tolist()
+    numeric_cols = df_original.select_dtypes(include=np.number).columns.tolist()
+    
+    integer_cols = []
+    decimal_cols = []
+    for col in numeric_cols:
+        # Your original logic was good for detecting integer-like floats.
+        if not np.allclose(df_original[col].dropna() % 1, 0):
+            decimal_cols.append(col)
         else:
-            has_decimal = not np.allclose(df_original[col_name].dropna() % 1, 0)
-            if has_decimal:
-                decimal_columns.append(col_name)
-            else:
-                integer_columns.append(col_name)
+            integer_cols.append(col)
 
-    df = pd.DataFrame(index=z_df.index, columns=z_df.columns)
+    # --- Step 2: Generate synthetic data using the inverse transform for each column ---
+    df_synthetic = pd.DataFrame(index=z_df.index, columns=z_df.columns)
 
     for col in z_df.columns:
-        sorted_vals = np.sort(df_original[col].dropna().values)
+        # This core logic remains the same as your original method.
         u_samples = gaussian_to_uniform(z_df[col])
-        nan_frac = df_original[col].isna().mean()
+        
+        if col in integer_cols:
+            sorted_vals = np.sort(df_original[col].dropna().values)
+            nan_frac = df_original[col].isna().mean()
+            df_synthetic[col] = inverse_empirical_cdf_integer(u_samples, sorted_vals, nan_frac=nan_frac)
 
-        if col in integer_columns:
-            df[col] = inverse_empirical_cdf_integer(u_samples, sorted_vals, nan_frac=nan_frac)
-
-        elif col in categorical_columns:
-            # --- Option B: NaN is its own category interval via NAN_TOKEN ---
+        elif col in categorical_cols:
             orig_obj = df_original[col].astype(object)
             vals_for_counts = np.where(pd.isna(orig_obj), "NaN", orig_obj)
-
-            # Build label order consistent with forward: non-NaN sorted + NAN_TOKEN at end
             non_nan_labels = list(np.sort(df_original[col].dropna().unique()))
             sorted_labels = non_nan_labels + ["NaN"]
-
-            # Counts aligned to our label order
+            
             uniq, cnt = np.unique(vals_for_counts, return_counts=True)
             count_map = {l: c for l, c in zip(uniq, cnt)}
             counts_in_order = np.array([count_map.get(l, 0) for l in sorted_labels], dtype=float)
-
-            # Invert (nan_frac ignored here because NaN has its own interval)
+            
             out_labels = inverse_empirical_cdf_categorical(u_samples, sorted_labels, counts_in_order, nan_frac=0.0)
-
-            # Ensure literal NAN_TOKEN (if any) becomes actual np.nan
+            
             out_labels = out_labels.astype(object)
             out_labels[out_labels == "NaN"] = np.nan
-            df[col] = out_labels
+            df_synthetic[col] = out_labels
 
+        else: 
+            sorted_vals = np.sort(df_original[col].dropna().values)
+            nan_frac = df_original[col].isna().mean()
+            df_synthetic[col] = inverse_empirical_cdf_decimal_interp(u_samples, sorted_vals, nan_frac=nan_frac)
+
+    print("Enforcing original data types for structural similarity...")
+    for col in df_original.columns:
+        original_dtype = df_original[col].dtype
+        if pd.api.types.is_integer_dtype(original_dtype) and df_synthetic[col].isnull().any():
+            df_synthetic[col] = df_synthetic[col].astype('Int64')
         else:
-            df[col] = inverse_empirical_cdf_decimal_interp(u_samples, sorted_vals, nan_frac=nan_frac)
+            try:
+                df_synthetic[col] = df_synthetic[col].astype(original_dtype)
+            except Exception as e:
+                print(f"Warning: Could not cast column '{col}' to {original_dtype}. Error: {e}")
 
-    return df
+    return df_synthetic
 
 
 def gaussian_to_uniform(z):
