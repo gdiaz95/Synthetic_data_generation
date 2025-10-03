@@ -1,4 +1,11 @@
+# Python cache
+__pycache__/
+
+# Poetry virtual environment
 .venv/
+
+# Generated output directories
 images/
 models/
 reports/
+metadata.json
