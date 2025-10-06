@@ -82,15 +82,15 @@ def create_comparison_plots():
     print("\nGenerating and saving comparison plots...")
     for metric in metrics_to_plot:
         plt.figure(figsize=(14, 8))
-        
-        sns.lineplot(data=scores_df, x='Iteration', y=metric, hue='Method', marker='o', palette='viridis')
+
+        sns.lineplot(data=scores_df, x='Iteration', y=metric, hue='Method', marker='o', palette='tab10', linewidth=4,markersize=10)
         plt.title(f'{metric} Comparison Across Methods and Iterations', fontsize=18, pad=20)
         plt.xlabel('Iteration', fontsize=12)
         plt.ylabel('Score', fontsize=12)
         plt.grid(True, which='both', linestyle='--', linewidth=0.5)
         plt.xticks(iterations)
         plt.ylim(0, 1.05)
-        plt.legend(title='Method', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.legend(title='Method', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=12, title_fontsize=14)
         plt.tight_layout()
         filename = metric.lower().replace(' ', '_') + '_comparison.png'
         save_path = os.path.join(output_dir, filename)
