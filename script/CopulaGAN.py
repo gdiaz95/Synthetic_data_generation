@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This script performs an iterative pipeline for generating and evaluating
-synthetic data using the CopulaGAN model. This version includes the latest
-metadata handling to prevent warnings and can resume from any iteration.
+synthetic data using the CopulaGAN model, logging all results to W&B.
 """
 
 # --------------------------------------------------------------------------
@@ -11,59 +10,40 @@ metadata handling to prevent warnings and can resume from any iteration.
 import os
 import json
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 from ucimlrepo import fetch_ucirepo
-# UPDATED: Import the new Metadata class
 from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
 from sdv.single_table import CopulaGANSynthesizer
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
+import wandb  # <-- ADDED
 
 # --------------------------------------------------------------------------
 # 2. FUNCTION DEFINITIONS
 # --------------------------------------------------------------------------
 
-# UPDATED: This function now saves/loads metadata to prevent warnings.
 def load_and_prepare_data(metadata_path):
-    """
-    Fetches the UCI Adult dataset and prepares the data. It loads metadata
-    from a file if it exists, otherwise it detects and saves it.
-    """
-    print("Loading and preparing original dataset...")
+    """Loads the Adult dataset and the project's metadata."""
+    print("Loading original dataset and metadata...")
     adult = fetch_ucirepo(id=2)
     adult_df = pd.concat([adult.data.features, adult.data.targets], axis=1)
     adult_df['income'] = adult_df['income'].str.strip().str.replace('.', '', regex=False)
-    
     if os.path.exists(metadata_path):
-        print(f"Loading metadata from '{metadata_path}'...")
-        # This is the corrected line
         metadata = Metadata.load_from_json(filepath=metadata_path)
     else:
-        print("Detecting metadata from data...")
         metadata = Metadata()
-        metadata.detect_table_from_dataframe(
-            table_name='adult_data',
-            data=adult_df
-        )
+        metadata.detect_table_from_dataframe(table_name='adult_data', data=adult_df)
         metadata.save_to_json(filepath=metadata_path)
-        print(f"Metadata detected and saved to '{metadata_path}'.")
-
     print("Dataset loaded successfully.")
     return adult_df, metadata
 
-# UPDATED: This function can now load a model from any iteration.
-def load_or_train_synthesizer(training_data, metadata, model_path, iteration):
-    """
-    Loads a synthesizer from the specified path if it exists for the current
-    iteration. Otherwise, it trains a new synthesizer and saves it.
-    """
+def load_or_train_synthesizer(training_data, metadata, model_path):
+    """Loads a synthesizer if it exists, otherwise trains a new one."""
     if os.path.exists(model_path):
-        print(f"Iteration {iteration}: Found existing model at '{model_path}'. Loading...")
+        print(f"Found existing model at '{model_path}'. Loading...")
         synthesizer = load_synthesizer(model_path)
         print("Model loaded successfully.")
     else:
-        print(f"Iteration {iteration}: No model found for this iteration. Training a new model...")
+        print(f"No model found. Training a new model...")
         synthesizer = CopulaGANSynthesizer(metadata, verbose=True)
         synthesizer.fit(training_data)
         print(f"Training complete. Saving model to '{model_path}'...")
@@ -73,64 +53,37 @@ def load_or_train_synthesizer(training_data, metadata, model_path, iteration):
     return synthesizer
 
 def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path):
-    """Generates and saves diagnostic and quality reports."""
-    print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
+    """Generates reports, saves them, and returns the scores as a dictionary."""
+    print(f"--- Evaluating and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
     quality_report = evaluate_quality(original_real_data, synthetic_data, metadata)
     combined_report_data = {
         'diagnostic_report': {'properties': diagnostic_report.get_properties().to_dict('records')},
         'quality_report': {
             'overall_score': quality_report.get_score(),
-            'properties': quality_report.get_properties().to_dict('records'),
-            'details': {
-                'Column Shapes': quality_report.get_details('Column Shapes').to_dict('records'),
-                'Column Pair Trends': quality_report.get_details('Column Pair Trends').to_dict('records')
-            }
+            'properties': quality_report.get_properties().to_dict('records')
         }
     }
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, 'w') as f:
         json.dump(combined_report_data, f, indent=4)
     print(f"Combined report saved successfully.")
-
-def generate_and_save_plots(original_real_data, synthetic_data, metadata, image_dir):
-    """Generates and saves distribution comparison plots."""
-    os.makedirs(image_dir, exist_ok=True)
-    print(f"Saving comparison plots to '{image_dir}' directory...")
-    for column in original_real_data.columns:
-        plt.figure(figsize=(12, 7))
-        if pd.api.types.is_numeric_dtype(original_real_data[column]):
-            sns.kdeplot(original_real_data[column], label='Original Real', fill=True, alpha=0.5, warn_singular=False)
-            sns.kdeplot(synthetic_data[column], label='Synthetic', fill=True, alpha=0.5, warn_singular=False)
-            plt.title(f'Numerical Distribution: {column}', fontsize=16)
-        else:
-            combined_df = pd.concat([
-                original_real_data[[column]].assign(Source='Original Real'),
-                synthetic_data[[column]].assign(Source='Synthetic')
-            ]).reset_index(drop=True)
-            sns.countplot(data=combined_df, x=column, hue='Source')
-            plt.title(f'Categorical Distribution: {column}', fontsize=16)
-            plt.xticks(rotation=45, ha='right')
-        plt.legend()
-        plt.tight_layout()
-        file_path = os.path.join(image_dir, f'{column}.png')
-        plt.savefig(file_path)
-        plt.close()
-    print(f"All plots for this iteration saved.")
+    return combined_report_data # <-- MODIFIED: Returns data for logging
 
 # --------------------------------------------------------------------------
 # 3. MAIN EXECUTION
 # --------------------------------------------------------------------------
 
-# UPDATED: The main function now defines and passes the metadata path.
 def main():
-    """Main function to orchestrate the iterative synthetic data pipeline."""
+    """Main function to orchestrate the iterative pipeline and W&B logging."""
     # --- Configuration ---
+    MODEL_TYPE = 'CopulaGAN' # <-- CHANGED
     TOTAL_ITERATIONS = 10
-    METADATA_PATH = './../metadata.json' 
-    BASE_MODEL_DIR = './../models/CopulaGAN/'
-    BASE_REPORT_DIR = './../reports/CopulaGAN/'
-    BASE_IMAGE_DIR = './../images/CopulaGAN/'
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    METADATA_PATH = os.path.join(PROJECT_ROOT, 'metadata.json')
+    BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, 'models', MODEL_TYPE)
+    BASE_REPORT_DIR = os.path.join(PROJECT_ROOT, 'reports', MODEL_TYPE)
+    FINAL_EVAL_STEP = 9999 # For overwriting scores
 
     # --- Initial Setup ---
     original_adult_df, metadata = load_and_prepare_data(METADATA_PATH)
@@ -138,20 +91,77 @@ def main():
 
     # --- Iteration Loop ---
     for i in range(1, TOTAL_ITERATIONS + 1):
-        print(f"\n{'='*20} STARTING ITERATION {i}/{TOTAL_ITERATIONS} {'='*20}")
-
+        print(f"\n{'='*20} PROCESSING ITERATION {i}/{TOTAL_ITERATIONS} {'='*20}")
+        
         model_path = os.path.join(BASE_MODEL_DIR, str(i), 'synthesizer.pkl')
         report_path = os.path.join(BASE_REPORT_DIR, f'{i}.json')
-        image_dir = os.path.join(BASE_IMAGE_DIR, str(i))
+        run_id_path = os.path.join(os.path.dirname(model_path), 'wandb_run_id.txt')
 
-        synthesizer = load_or_train_synthesizer(current_training_data, metadata, model_path, i)
+        # 1. Load or train the model
+        synthesizer = load_or_train_synthesizer(current_training_data, metadata, model_path)
+        
+        # 2. W&B Initialization
+        run_id = None
+        if os.path.exists(run_id_path):
+            with open(run_id_path, 'r') as f:
+                run_id = f.read().strip()
 
-        print(f"\nIteration {i}: Generating new synthetic sample...")
+        run = wandb.init(
+            project="synthetic-data-generation",
+            group=MODEL_TYPE,
+            name=f"{MODEL_TYPE}_iteration-{i}",
+            config={"model_type": MODEL_TYPE, "iteration": i},
+            id=run_id,
+            resume="allow"
+        )
+
+        # 3. Save the new ID if it was created.
+        if not run.resumed:
+            with open(run_id_path, 'w') as f:
+                f.write(run.id)
+
+        # 4. LOGGING BLOCK
+        
+        # 4a. Log Losses (Time Series)
+        try:
+            loss_values_df = synthesizer._model.loss_values
+            print("\n--- Logging detailed losses. ---")
+            
+            for index, row in loss_values_df.iterrows():
+                # Using the column names we just confirmed
+                wandb.log({
+                    "Generator Loss": row['Generator Loss'],
+                    "Discriminator Loss": row['Discriminator Loss']
+                }, step=int(row['Epoch']))
+            
+            print("Training losses logged as time series for plotting to W&B.")
+        except Exception as e:
+            print(f"Could not log detailed losses. The model may have been loaded: {e}")
+
+        # 4b. Generate Sample and Evaluation Scores
+        print(f"\nIteration {i}: Generating synthetic sample and evaluating...")
         synthetic_data = synthesizer.sample(num_rows=len(original_adult_df))
         
-        evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path)
-        generate_and_save_plots(original_adult_df, synthetic_data, metadata, image_dir)
+        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path)
+        
+        diag_props = {prop['Property']: prop['Score'] for prop in report_data['diagnostic_report']['properties']}
+        qual_props = {prop['Property']: prop['Score'] for prop in report_data['quality_report']['properties']}
+        
+        # Log evaluation scores at the FIXED, high step to force overwrite.
+        wandb.log({
+            'Data Validity': diag_props.get('Data Validity'),
+            'Data Structure': diag_props.get('Data Structure'),
+            'Overall Quality Score': report_data['quality_report'].get('overall_score'),
+            'Column Shapes Score': qual_props.get('Column Shapes'),
+            'Column Pair Trends Score': qual_props.get('Column Pair Trends')
+        }, step=FINAL_EVAL_STEP) 
+        
+        print(f"Evaluation scores logged/overwritten to W&B.")
 
+        # 5. Finish the run
+        run.finish()
+
+        # Update training data for the next iteration
         current_training_data = synthetic_data
         
         print(f"{'='*20} FINISHED ITERATION {i}/{TOTAL_ITERATIONS} {'='*20}")
