@@ -18,13 +18,27 @@ def create_comparison_plots():
     output_dir = os.path.join(project_root, 'images', 'report_comparison')
     os.makedirs(output_dir, exist_ok=True)
     
+    run_id_file = os.path.join(output_dir, 'wandb.txt')
+    run_id = None
+    if os.path.exists(run_id_file):
+        with open(run_id_file, 'r') as f:
+            run_id = f.read().strip()
+    
     run = wandb.init(
         project="synthetic-data-generation",
         job_type="analysis",
-        name=f"Comparison_Report_{int(time.time())}"
+        group="comparison_reports",
+        name=f"Comparison_Report_{int(time.time())}",
+        id=run_id,
+        resume="allow"
     )
+    
     print(f" Initialized W&B run for reporting: {run.name}")
 
+    # If this is a brand new run, save its ID for future use.
+    if not run.resumed:
+        with open(run_id_file, 'w') as f:
+            f.write(run.id)
     methods = [
         'CTGAN', 'GaussianCopula', 'CopulaGAN', 'TVAE', 'Gaussian_correlated'
     ]

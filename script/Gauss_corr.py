@@ -94,6 +94,7 @@ def main():
     # Using the robust path definition
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     METADATA_PATH = os.path.join(PROJECT_ROOT, 'metadata.json')
+    BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, 'models', MODEL_TYPE)
     BASE_REPORT_DIR = os.path.join(PROJECT_ROOT, 'reports', MODEL_TYPE)
     FINAL_EVAL_STEP = 9999 # For overwriting scores
 
@@ -105,9 +106,9 @@ def main():
     for i in range(1, TOTAL_ITERATIONS + 1):
         print(f"\n{'='*20} PROCESSING ITERATION {i}/{TOTAL_ITERATIONS} {'='*20}")
 
-        report_path = os.path.join(BASE_REPORT_DIR, str(i), f'{i}.json')
-        # Since there's no model dir, we'll store the run ID with the report
-        run_id_path = os.path.join(os.path.dirname(report_path), 'wandb_run_id.txt')
+        report_path = os.path.join(BASE_REPORT_DIR, f'{i}.json')
+        model_path = os.path.join(BASE_MODEL_DIR, str(i))
+        run_id_path = os.path.join(model_path, 'wandb_run_id.txt')
 
         # 1. W&B Initialization
         run_id = None
