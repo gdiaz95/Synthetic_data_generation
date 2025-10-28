@@ -9,3 +9,5 @@ images/
 models/
 reports/
 wandb/
+
+tests.ipynb

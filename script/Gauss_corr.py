@@ -12,10 +12,11 @@ import json
 import pandas as pd
 import numpy as np
 import sys
+from sklearn.model_selection import train_test_split
 from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
-import wandb  # <-- ADDED
+import wandb  
 
 # This makes the script runnable from anywhere
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -24,7 +25,7 @@ if project_root not in sys.path:
 
 # Import the custom functions from your correlator.py file
 from src.correlator import transform_dataset_into_gaussian, generate_correlations, transform_dataset_from_gaussian
-
+from src.metrics import get_metrics
 # --------------------------------------------------------------------------
 # 2. FUNCTION DEFINITIONS
 # --------------------------------------------------------------------------
@@ -45,13 +46,12 @@ def load_and_prepare_data(metadata_path):
     print("Dataset loaded successfully.")
     return adult_df, metadata
 
-def generate_synthetic_data_custom(training_data, original_data):
+def generate_synthetic_data_custom(original_data,n_samples):
     """Generates synthetic data using the custom Gaussian Copula method."""
     print("-> Step 1/4: Transforming training data to Gaussian space...")
-    data_train_z = transform_dataset_into_gaussian(training_data)
+    data_train_z = transform_dataset_into_gaussian(original_data)
 
     print("-> Step 2/4: Generating new independent Gaussian samples...")
-    n_samples = len(original_data)
     n_cols = len(original_data.columns)
     z_independent = pd.DataFrame(np.random.randn(n_samples, n_cols), columns=original_data.columns)
 
@@ -63,7 +63,7 @@ def generate_synthetic_data_custom(training_data, original_data):
     
     return synthetic_data
 
-def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path):
+def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa):
     """Generates reports, saves them, and returns the scores as a dictionary."""
     print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
@@ -73,6 +73,16 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
         'quality_report': {
             'overall_score': quality_report.get_score(),
             'properties': quality_report.get_properties().to_dict('records')
+        },
+        'metrics_qa': { "overall_accuracy": metrics_qa.accuracy.overall,
+            "univariate_accuracy": metrics_qa.accuracy.univariate,
+            "bivariate_accuracy": metrics_qa.accuracy.bivariate,
+            "discriminator_auc": metrics_qa.similarity.discriminator_auc_training_synthetic,
+            "identical_matches": metrics_qa.distances.ims_training,
+            "dcr_training": metrics_qa.distances.dcr_training,
+            "dcr_holdout": metrics_qa.distances.dcr_holdout,
+            "dcr_share": metrics_qa.distances.dcr_share
+            
         }
     }
     # Ensure the directory exists before saving
@@ -131,25 +141,43 @@ def main():
             os.makedirs(os.path.dirname(run_id_path), exist_ok=True)
             with open(run_id_path, 'w') as f:
                 f.write(run.id)
+                
+        # 3. Split data into training and holdout sets
+        print(f"\nSplitting data into training and holdout sets for iteration {i}...")
+        if i == 1:
+            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=42)
+        else:
+            train_data = current_training_data
+        print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
-        # 3. Generate and Log Data
+        # 4. Generate and Log Data
         print(f"\nIteration {i}: Generating new synthetic sample using custom method...")
         synthetic_data = generate_synthetic_data_custom(
-            training_data=current_training_data,
-            original_data=current_training_data
+            original_data=train_data,
+            n_samples=len(train_data)
         )
-        
-        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path)
+
+        metrics_qa = get_metrics(train_data, synthetic_data, holdout_data)
+        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path, metrics_qa)
         
         diag_props = {prop['Property']: prop['Score'] for prop in report_data['diagnostic_report']['properties']}
         qual_props = {prop['Property']: prop['Score'] for prop in report_data['quality_report']['properties']}
+        
         
         wandb.log({
             'Data Validity': diag_props.get('Data Validity'),
             'Data Structure': diag_props.get('Data Structure'),
             'Overall Quality Score': report_data['quality_report'].get('overall_score'),
             'Column Shapes Score': qual_props.get('Column Shapes'),
-            'Column Pair Trends Score': qual_props.get('Column Pair Trends')
+            'Column Pair Trends Score': qual_props.get('Column Pair Trends'),
+            "overall_accuracy": metrics_qa.accuracy.overall,
+            "univariate_accuracy": metrics_qa.accuracy.univariate,
+            "bivariate_accuracy": metrics_qa.accuracy.bivariate,
+            "discriminator_auc": metrics_qa.similarity.discriminator_auc_training_synthetic,
+            "identical_matches": metrics_qa.distances.ims_training,
+            "dcr_training": metrics_qa.distances.dcr_training,
+            "dcr_holdout": metrics_qa.distances.dcr_holdout,
+            "dcr_share": metrics_qa.distances.dcr_share
         }, step=FINAL_EVAL_STEP)
         
         print(f"Evaluation scores logged/overwritten to W&B.")
