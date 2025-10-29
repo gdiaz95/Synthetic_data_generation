@@ -11,3 +11,5 @@ reports/
 wandb/
 
 tests.ipynb
+
+.env

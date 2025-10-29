@@ -16,6 +16,7 @@ dependencies = [
     "seaborn (>=0.13.2,<0.14.0)",
     "wandb (>=0.22.1,<0.23.0)",
     "mostlyai-qa (>=1.9.9,<2.0.0)",
+    "dotenv (>=0.9.9,<0.10.0)",
 ]
 
 [tool.poetry]

@@ -10,12 +10,23 @@ synthetic data using the GaussianCopula model, logging evaluation results to W&B
 import os
 import json
 import pandas as pd
+import sys
+import time
+from sklearn.model_selection import train_test_split
 from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
-from sdv.single_table import GaussianCopulaSynthesizer # <-- CHANGED
+from sdv.single_table import GaussianCopulaSynthesizer # <-- CORRECT MODEL
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
-import wandb
+import wandb  
+
+# This makes the script runnable from anywhere
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Import the custom functions
+from src.metrics import get_metrics
 
 # --------------------------------------------------------------------------
 # 2. FUNCTION DEFINITIONS
@@ -36,33 +47,68 @@ def load_and_prepare_data(metadata_path):
     print("Dataset loaded successfully.")
     return adult_df, metadata
 
-def load_or_train_synthesizer(training_data, metadata, model_path):
-    """Loads a synthesizer if it exists, otherwise fits a new one."""
+def load_or_train_synthesizer(training_data, metadata, model_path, report_path):
+    """
+    Loads a synthesizer if it exists, otherwise fits a new one.
+    Returns the synthesizer and the time it took to fit (reads from report if loaded).
+    """
     if os.path.exists(model_path):
         print(f"Found existing model at '{model_path}'. Loading...")
         synthesizer = load_synthesizer(model_path)
         print("Model loaded successfully.")
+        
+        # Logic to read training_time from the existing report
+        training_time = 0.0  # Default if report/key doesn't exist
+        if os.path.exists(report_path):
+            try:
+                with open(report_path, 'r') as f:
+                    report_data = json.load(f)
+                training_time = report_data['times']['training_time']
+                print(f"Read existing training time from report: {training_time}s")
+            except Exception as e:
+                print(f"Warning: Could not read training time from report '{report_path}'. Defaulting to 0.0. Error: {e}")
+        else:
+            print(f"Warning: Report file '{report_path}' not found. Defaulting training time to 0.0.")
+            
+        return synthesizer, training_time
+    
     else:
         print(f"No model found. Fitting a new model...")
-        synthesizer = GaussianCopulaSynthesizer(metadata) # <-- CHANGED
+        synthesizer = GaussianCopulaSynthesizer(metadata) # <-- CORRECT MODEL
+        
+        start_time = time.time()
         synthesizer.fit(training_data)
+        training_time = time.time() - start_time
+        
         print(f"Fitting complete. Saving model to '{model_path}'...")
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         synthesizer.save(model_path)
         print("Model saved successfully.")
-    return synthesizer
+        return synthesizer, training_time
 
-def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path):
+def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa, training_time, evaluation_time):
     """Generates reports, saves them, and returns the scores as a dictionary."""
     print(f"--- Evaluating and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
     quality_report = evaluate_quality(original_real_data, synthetic_data, metadata)
+    
     combined_report_data = {
         'diagnostic_report': {'properties': diagnostic_report.get_properties().to_dict('records')},
         'quality_report': {
             'overall_score': quality_report.get_score(),
             'properties': quality_report.get_properties().to_dict('records')
-        }
+        },
+        'metrics_qa': { "overall_accuracy": metrics_qa.accuracy.overall,
+            "univariate_accuracy": metrics_qa.accuracy.univariate,
+            "bivariate_accuracy": metrics_qa.accuracy.bivariate,
+            "discriminator_auc": metrics_qa.similarity.discriminator_auc_training_synthetic,
+            "identical_matches": metrics_qa.distances.ims_training,
+            "dcr_training": metrics_qa.distances.dcr_training,
+            "dcr_holdout": metrics_qa.distances.dcr_holdout,
+            "dcr_share": metrics_qa.distances.dcr_share
+        },
+        "times":{"training_time": training_time,
+                 "evaluation_time": evaluation_time}
     }
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, 'w') as f:
@@ -96,9 +142,16 @@ def main():
         model_path = os.path.join(BASE_MODEL_DIR, str(i), 'synthesizer.pkl')
         report_path = os.path.join(BASE_REPORT_DIR, f'{i}.json')
         run_id_path = os.path.join(os.path.dirname(model_path), 'wandb_run_id.txt')
+        
+        print(f"\nSplitting data into training and holdout sets for iteration {i}...")
+        if i == 1:
+            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=42)
+        else:
+            train_data = current_training_data
+        print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         # 1. Load or fit the model
-        synthesizer = load_or_train_synthesizer(current_training_data, metadata, model_path)
+        synthesizer, training_time = load_or_train_synthesizer(train_data, metadata, model_path, report_path)
         
         # 2. W&B Initialization
         run_id = None
@@ -126,10 +179,16 @@ def main():
         
         # Generate Sample and Evaluation Scores
         print(f"\nIteration {i}: Generating synthetic sample and evaluating...")
-        synthetic_data = synthesizer.sample(num_rows=len(original_adult_df))
+        start_time = time.time()
+        synthetic_data = synthesizer.sample(num_rows=len(train_data))
+        evaluation_time = time.time() - start_time
         
-        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path)
-        
+        print("Getting QA metrics...")
+        # Get metrics using the train/holdout split
+        metrics_qa = get_metrics(train_data, synthetic_data, holdout_data)
+
+        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path, metrics_qa, training_time, evaluation_time)
+
         diag_props = {prop['Property']: prop['Score'] for prop in report_data['diagnostic_report']['properties']}
         qual_props = {prop['Property']: prop['Score'] for prop in report_data['quality_report']['properties']}
         
@@ -138,7 +197,18 @@ def main():
             'Data Structure': diag_props.get('Data Structure'),
             'Overall Quality Score': report_data['quality_report'].get('overall_score'),
             'Column Shapes Score': qual_props.get('Column Shapes'),
-            'Column Pair Trends Score': qual_props.get('Column Pair Trends')
+            'Column Pair Trends Score': qual_props.get('Column Pair Trends'),
+            "overall_accuracy": metrics_qa.accuracy.overall,
+            "univariate_accuracy": metrics_qa.accuracy.univariate,
+            "bivariate_accuracy": metrics_qa.accuracy.bivariate,
+            "discriminator_auc": metrics_qa.similarity.discriminator_auc_training_synthetic,
+            "identical_matches": metrics_qa.distances.ims_training,
+            "dcr_training": metrics_qa.distances.dcr_training,
+            "dcr_holdout": metrics_qa.distances.dcr_holdout,
+            "dcr_share": metrics_qa.distances.dcr_share,
+            "training_time": training_time,
+            "evaluation_time": evaluation_time
+            
         }, step=FINAL_EVAL_STEP) 
         
         print(f"Evaluation scores logged/overwritten to W&B.")

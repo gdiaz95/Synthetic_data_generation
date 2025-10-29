@@ -16,6 +16,7 @@ from sklearn.model_selection import train_test_split
 from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
+import time
 import wandb  
 
 # This makes the script runnable from anywhere
@@ -63,7 +64,7 @@ def generate_synthetic_data_custom(original_data,n_samples):
     
     return synthetic_data
 
-def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa):
+def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa,training_time,evaluation_time):
     """Generates reports, saves them, and returns the scores as a dictionary."""
     print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
@@ -83,7 +84,10 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
             "dcr_holdout": metrics_qa.distances.dcr_holdout,
             "dcr_share": metrics_qa.distances.dcr_share
             
-        }
+        },
+        "times":{"training_time": training_time,
+                 "evaluation_time": evaluation_time}
+        
     }
     # Ensure the directory exists before saving
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
@@ -151,14 +155,16 @@ def main():
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         # 4. Generate and Log Data
+        start_time = time.time()
         print(f"\nIteration {i}: Generating new synthetic sample using custom method...")
         synthetic_data = generate_synthetic_data_custom(
             original_data=train_data,
             n_samples=len(train_data)
         )
+        generating_time = time.time() - start_time
 
         metrics_qa = get_metrics(train_data, synthetic_data, holdout_data)
-        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path, metrics_qa)
+        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path, metrics_qa, 0.0 ,generating_time)
         
         diag_props = {prop['Property']: prop['Score'] for prop in report_data['diagnostic_report']['properties']}
         qual_props = {prop['Property']: prop['Score'] for prop in report_data['quality_report']['properties']}
@@ -177,7 +183,9 @@ def main():
             "identical_matches": metrics_qa.distances.ims_training,
             "dcr_training": metrics_qa.distances.dcr_training,
             "dcr_holdout": metrics_qa.distances.dcr_holdout,
-            "dcr_share": metrics_qa.distances.dcr_share
+            "dcr_share": metrics_qa.distances.dcr_share,
+            "training_time": 0.0,
+            "evaluation_time": generating_time
         }, step=FINAL_EVAL_STEP)
         
         print(f"Evaluation scores logged/overwritten to W&B.")

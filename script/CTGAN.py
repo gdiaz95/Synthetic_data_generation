@@ -12,7 +12,23 @@ from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
 from sdv.single_table import CTGANSynthesizer
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
+import sys
+import time
+from sklearn.model_selection import train_test_split
 import wandb
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Import the custom metrics function
+from src.metrics import get_metrics
+
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 def load_and_prepare_data(metadata_path):
     """Loads the Adult dataset and the project's metadata."""
@@ -31,7 +47,7 @@ def load_and_prepare_data(metadata_path):
     return adult_df, metadata
 
 # SIMPLIFIED: This function now only loads or trains, and reports if it trained.
-def load_or_train_synthesizer(training_data, metadata, model_path):
+def load_or_train_synthesizer(training_data, metadata, model_path,report_path):
     """
     Loads a synthesizer if it exists, otherwise trains a new one.
     Returns the synthesizer and a boolean indicating if training occurred.
@@ -40,22 +56,35 @@ def load_or_train_synthesizer(training_data, metadata, model_path):
         print(f"Found existing model at '{model_path}'. Loading...")
         synthesizer = load_synthesizer(model_path)
         print("Model loaded successfully.")
-        return synthesizer, False  # Return a flag indicating model was loaded
+        if os.path.exists(report_path):
+            try:
+                with open(report_path, 'r') as f:
+                    report_data = json.load(f)
+                # Navigate to the correct key
+                training_time = report_data['times']['training_time']
+                print(f"Read existing training time from report: {training_time}s")
+            except Exception as e:
+                print(f"Warning: Could not read training time from report '{report_path}'. Defaulting to 0.0. Error: {e}")
+        else:
+            print(f"Warning: Report file '{report_path}' not found. Defaulting training time to 0.0.")
+
+        return synthesizer, training_time  # Return a flag indicating model was loaded
     else:
         print(f"No model found. Training a new model...")
         synthesizer = CTGANSynthesizer(metadata, verbose=True)
+        start_time = time.time()
         synthesizer.fit(training_data)
+        training_time = time.time() - start_time
         
         print(f"Training complete. Saving model to '{model_path}'...")
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         synthesizer.save(model_path)
         print("Model saved successfully.")
-        return synthesizer, True  # Return a flag indicating model was trained
+        return synthesizer, training_time  # Return a flag indicating model was trained
 
-def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path):
+def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa,training_time,evaluation_time):
     """Generates reports, saves them, and returns the scores as a dictionary."""
-    # ... (This function is correct and remains unchanged) ...
-    print(f"--- Evaluating and saving reports to '{report_path}' ---")
+    print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
     quality_report = evaluate_quality(original_real_data, synthetic_data, metadata)
     combined_report_data = {
@@ -63,8 +92,22 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
         'quality_report': {
             'overall_score': quality_report.get_score(),
             'properties': quality_report.get_properties().to_dict('records')
-        }
+        },
+        'metrics_qa': { "overall_accuracy": metrics_qa.accuracy.overall,
+            "univariate_accuracy": metrics_qa.accuracy.univariate,
+            "bivariate_accuracy": metrics_qa.accuracy.bivariate,
+            "discriminator_auc": metrics_qa.similarity.discriminator_auc_training_synthetic,
+            "identical_matches": metrics_qa.distances.ims_training,
+            "dcr_training": metrics_qa.distances.dcr_training,
+            "dcr_holdout": metrics_qa.distances.dcr_holdout,
+            "dcr_share": metrics_qa.distances.dcr_share
+            
+        },
+        "times":{"training_time": training_time,
+                 "evaluation_time": evaluation_time}
+        
     }
+    # Ensure the directory exists before saving
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, 'w') as f:
         json.dump(combined_report_data, f, indent=4)
@@ -91,10 +134,17 @@ def main():
         model_path = os.path.join(BASE_MODEL_DIR, str(i), 'synthesizer.pkl')
         report_path = os.path.join(BASE_REPORT_DIR, f'{i}.json')
         run_id_path = os.path.join(os.path.dirname(model_path), 'wandb_run_id.txt')
+        
+        print(f"\nSplitting data into training and holdout sets for iteration {i}...")
+        if i == 1:
+            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=42)
+        else:
+            train_data = current_training_data
+        print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         # 1. Load or train the model (was_trained is ignored in the logging logic)
-        synthesizer, _ = load_or_train_synthesizer(current_training_data, metadata, model_path)
-        
+        synthesizer, training_time = load_or_train_synthesizer(train_data, metadata, model_path, report_path)
+
         # 2. W&B Initialization (Maintain 10 runs)
         run_id = None
         if os.path.exists(run_id_path):
@@ -137,10 +187,18 @@ def main():
 
         # 4b. Generate Sample and Evaluation Scores (Overwrite previous single point)
         print(f"\nIteration {i}: Generating synthetic sample and evaluating...")
-        synthetic_data = synthesizer.sample(num_rows=len(original_adult_df))
         
-        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path)
-        
+        start_eval_time = time.time()
+        # Generate data with the same size as the training set
+        synthetic_data = synthesizer.sample(num_rows=len(train_data)) 
+        evaluation_time = time.time() - start_eval_time
+
+        print("Getting QA metrics...")
+        # Get metrics using the train/holdout split
+        metrics_qa = get_metrics(train_data, synthetic_data, holdout_data)
+
+        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path, metrics_qa, training_time, evaluation_time)
+
         diag_props = {prop['Property']: prop['Score'] for prop in report_data['diagnostic_report']['properties']}
         qual_props = {prop['Property']: prop['Score'] for prop in report_data['quality_report']['properties']}
         
@@ -150,7 +208,17 @@ def main():
             'Data Structure': diag_props.get('Data Structure'),
             'Overall Quality Score': report_data['quality_report'].get('overall_score'),
             'Column Shapes Score': qual_props.get('Column Shapes'),
-            'Column Pair Trends Score': qual_props.get('Column Pair Trends')
+            'Column Pair Trends Score': qual_props.get('Column Pair Trends'),
+            "overall_accuracy": metrics_qa.accuracy.overall,
+            "univariate_accuracy": metrics_qa.accuracy.univariate,
+            "bivariate_accuracy": metrics_qa.accuracy.bivariate,
+            "discriminator_auc": metrics_qa.similarity.discriminator_auc_training_synthetic,
+            "identical_matches": metrics_qa.distances.ims_training,
+            "dcr_training": metrics_qa.distances.dcr_training,
+            "dcr_holdout": metrics_qa.distances.dcr_holdout,
+            "dcr_share": metrics_qa.distances.dcr_share,
+            "training_time": training_time,
+            "evaluation_time": evaluation_time
         }, step=FINAL_EVAL_STEP) 
         
         print(f"Evaluation scores logged/overwritten to W&B.")
