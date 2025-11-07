@@ -17,6 +17,7 @@ dependencies = [
     "wandb (>=0.22.1,<0.23.0)",
     "mostlyai-qa (>=1.9.9,<2.0.0)",
     "dotenv (>=0.9.9,<0.10.0)",
+    "xgboost (>=3.1.1,<4.0.0)",
 ]
 
 [tool.poetry]

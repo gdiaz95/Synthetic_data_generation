@@ -20,6 +20,8 @@ from sdv.utils import load_synthesizer
 from sdv.single_table import TVAESynthesizer
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
 import wandb
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score
 
 # This makes the script runnable from anywhere
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -27,7 +29,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the custom functions
-from src.metrics import get_metrics
+from src.metrics import get_metrics, run_tstr_evaluation
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -103,8 +105,7 @@ def load_or_train_synthesizer(training_data, metadata, model_path, report_path):
         print("Model saved successfully.")
         return synthesizer, training_time
 
-# MODIFIED: To accept and save metrics_qa and times
-def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa, training_time, evaluation_time):
+def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa, training_time, evaluation_time, tstr_results):
     """Generates reports, saves them, and returns the scores as a dictionary."""
     print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
@@ -126,7 +127,9 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
             "dcr_share": metrics_qa.distances.dcr_share
         },
         "times":{"training_time": training_time,
-                 "evaluation_time": evaluation_time}
+                 "evaluation_time": evaluation_time},
+        
+        "tstr_evaluation": tstr_results
     }
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, 'w') as f:
@@ -148,6 +151,15 @@ def main():
     BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, 'models', MODEL_TYPE)
     BASE_REPORT_DIR = os.path.join(PROJECT_ROOT, 'reports', MODEL_TYPE)
     FINAL_EVAL_STEP = 9999
+
+
+    tstr_models = {
+        "XGBoost Classifier": XGBClassifier(random_state=42, eval_metric='logloss')
+    }
+    tstr_metrics = {
+        "Accuracy": accuracy_score
+    }
+    target_column = 'income'
 
     # --- Initial Setup ---
     original_adult_df, metadata = load_and_prepare_data(METADATA_PATH)
@@ -222,13 +234,39 @@ def main():
         synthetic_data = synthesizer.sample(num_rows=len(train_data))
         evaluation_time = time.time() - start_eval_time
 
+        # --- ADDED: Run the TSTR (Train on Synthetic, Test on Real) evaluation ---
+        print("\nRunning TSTR evaluation...")
+        tstr_results = {}
+        for m_name, model in tstr_models.items():
+            for met_name, metric_func in tstr_metrics.items():
+                
+                score_real, score_synth, gap = run_tstr_evaluation(
+                    real_data=original_adult_df,  # Use the *full* original data
+                    synthetic_data=synthetic_data,
+                    target_column=target_column,
+                    model=model,
+                    metric_func=metric_func
+                )
+                
+                # Create a simple, flat name for the report
+                base_name = f"TSTR_{m_name}_{met_name}"
+
+                # Log the TSTR scores with flat keys
+                tstr_results[f"{base_name}_Real_Score"] = score_real
+                tstr_results[f"{base_name}_Synthetic_Score"] = score_synth
+                tstr_results[f"{base_name}_Performance_Drop_%"] = gap
+        
+        print("TSTR evaluation complete.")
+        # --- END OF ADDED SECTION ---
+
         print("Getting QA metrics...")
         # Get metrics using the train/holdout split
         metrics_qa = get_metrics(train_data, synthetic_data, holdout_data)
         
+        # --- MODIFIED: Pass tstr_results to the report function ---
         report_data = evaluate_and_save_reports(
             original_adult_df, synthetic_data, metadata, report_path, 
-            metrics_qa, training_time, evaluation_time
+            metrics_qa, training_time, evaluation_time, tstr_results
         )
         
         diag_props = {prop['Property']: prop['Score'] for prop in report_data['diagnostic_report']['properties']}
@@ -252,7 +290,8 @@ def main():
             "dcr_holdout": metrics_qa.distances.dcr_holdout,
             "dcr_share": metrics_qa.distances.dcr_share,
             "training_time": training_time,
-            "evaluation_time": evaluation_time
+            "evaluation_time": evaluation_time,
+            **tstr_results
             
         }, step=FINAL_EVAL_STEP) 
         

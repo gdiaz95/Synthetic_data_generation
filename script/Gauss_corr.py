@@ -18,6 +18,8 @@ from sdv.metadata import Metadata
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
 import time
 import wandb  
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score 
 
 # This makes the script runnable from anywhere
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -26,7 +28,7 @@ if project_root not in sys.path:
 
 # Import the custom functions from your correlator.py file
 from src.correlator import transform_dataset_into_gaussian, generate_correlations, transform_dataset_from_gaussian
-from src.metrics import get_metrics
+from src.metrics import get_metrics, run_tstr_evaluation
 # --------------------------------------------------------------------------
 # 2. FUNCTION DEFINITIONS
 # --------------------------------------------------------------------------
@@ -64,7 +66,7 @@ def generate_synthetic_data_custom(original_data,n_samples):
     
     return synthetic_data
 
-def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa,training_time,evaluation_time):
+def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa,training_time,evaluation_time,tstr_results):
     """Generates reports, saves them, and returns the scores as a dictionary."""
     print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
     diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
@@ -86,7 +88,9 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
             
         },
         "times":{"training_time": training_time,
-                 "evaluation_time": evaluation_time}
+                 "evaluation_time": evaluation_time},
+        
+        "tstr_evaluation": tstr_results
         
     }
     # Ensure the directory exists before saving
@@ -103,7 +107,16 @@ def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, repo
 def main():
     """Main function to orchestrate the iterative pipeline and W&B logging."""
     # --- Configuration ---
-    MODEL_TYPE = 'Gaussian_correlated' # <-- ADDED
+    MODEL_TYPE = 'Gaussian_correlated' 
+    
+    tstr_models = {
+        "XGBoost Classifier": XGBClassifier(random_state=42, eval_metric='logloss')
+    }
+    tstr_metrics = {
+        "Accuracy": accuracy_score
+    }
+    target_column = 'income'
+    
     TOTAL_ITERATIONS = 10
     # Using the robust path definition
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -162,9 +175,32 @@ def main():
             n_samples=len(train_data)
         )
         generating_time = time.time() - start_time
+        
+        print("\nRunning TSTR evaluation...")
+        tstr_results = {}
+        for m_name, model in tstr_models.items():
+            for met_name, metric_func in tstr_metrics.items():
+                
+                score_real, score_synth, gap = run_tstr_evaluation(
+                    real_data=original_adult_df,  # Use the *full* original data
+                    synthetic_data=synthetic_data,
+                    target_column=target_column,
+                    model=model,
+                    metric_func=metric_func
+                )
+                
+                # Log the TSTR scores for wandb
+                base_name = f"TSTR_{m_name}_{met_name}"
+
+                # Log the TSTR scores with flat keys
+                tstr_results[f"{base_name}_Real_Score"] = score_real
+                tstr_results[f"{base_name}_Synthetic_Score"] = score_synth
+                tstr_results[f"{base_name}_Performance_Drop_%"] = gap
+        
+        print("TSTR evaluation complete.")
 
         metrics_qa = get_metrics(train_data, synthetic_data, holdout_data)
-        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path, metrics_qa, 0.0 ,generating_time)
+        report_data = evaluate_and_save_reports(original_adult_df, synthetic_data, metadata, report_path, metrics_qa, 0.0 ,generating_time,tstr_results)
         
         diag_props = {prop['Property']: prop['Score'] for prop in report_data['diagnostic_report']['properties']}
         qual_props = {prop['Property']: prop['Score'] for prop in report_data['quality_report']['properties']}
@@ -185,7 +221,8 @@ def main():
             "dcr_holdout": metrics_qa.distances.dcr_holdout,
             "dcr_share": metrics_qa.distances.dcr_share,
             "training_time": 0.0,
-            "evaluation_time": generating_time
+            "evaluation_time": generating_time,
+            **tstr_results
         }, step=FINAL_EVAL_STEP)
         
         print(f"Evaluation scores logged/overwritten to W&B.")
