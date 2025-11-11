@@ -8,9 +8,7 @@ synthetic data using a custom Gaussian Copula method, logging results to W&B.
 # 1. IMPORTS
 # --------------------------------------------------------------------------
 import os
-import json
 import pandas as pd
-import numpy as np
 import sys
 from sklearn.model_selection import train_test_split
 from ucimlrepo import fetch_ucirepo
@@ -26,7 +24,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the custom functions from your correlator.py file
-from src.correlator import transform_dataset_into_gaussian, generate_correlations, transform_dataset_from_gaussian
+from src.correlator import generate_synthetic_data
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
 # --------------------------------------------------------------------------
 # 2. FUNCTION DEFINITIONS
@@ -48,22 +46,7 @@ def load_and_prepare_data(metadata_path):
     print("Dataset loaded successfully.")
     return adult_df, metadata
 
-def generate_synthetic_data_custom(original_data,n_samples):
-    """Generates synthetic data using the custom Gaussian Copula method."""
-    print("-> Step 1/4: Transforming training data to Gaussian space...")
-    data_train_z = transform_dataset_into_gaussian(original_data)
 
-    print("-> Step 2/4: Generating new independent Gaussian samples...")
-    n_cols = len(original_data.columns)
-    z_independent = pd.DataFrame(np.random.randn(n_samples, n_cols), columns=original_data.columns)
-
-    print("-> Step 3/4: Applying learned correlations to new samples...")
-    z_correlated = generate_correlations(data_train_z, z_independent)
-
-    print("-> Step 4/4: Transforming correlated samples back to original data space...")
-    synthetic_data = transform_dataset_from_gaussian(z_correlated, original_data)
-    
-    return synthetic_data
 
 
 
@@ -137,7 +120,7 @@ def main():
         # 4. Generate and Log Data
         start_time = time.time()
         print(f"\nIteration {i}: Generating new synthetic sample using custom method...")
-        synthetic_data = generate_synthetic_data_custom(
+        synthetic_data = generate_synthetic_data(
             original_data=train_data,
             n_samples=len(train_data)
         )

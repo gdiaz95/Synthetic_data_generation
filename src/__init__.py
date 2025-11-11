@@ -1,4 +1,2 @@
-from .correlator import transform_dataset_into_gaussian
-from .correlator import generate_correlations
-from .correlator import transform_dataset_from_gaussian
-from .metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
+from .correlator import generate_synthetic_data
+from .metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports, evaluate_and_save_reports

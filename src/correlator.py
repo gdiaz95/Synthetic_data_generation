@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.stats import rankdata, norm
 import pandas as pd
-import math
 
 
 
@@ -360,3 +359,20 @@ def generate_correlations(df_z_original, x_vector):
     X_arr = np.asarray(x_vector) @ L.T
     X     = pd.DataFrame(X_arr, columns=df_z_original.columns)
     return X
+
+def generate_synthetic_data(original_data,n_samples):
+    """Generates synthetic data using the custom Gaussian Copula method."""
+    print("-> Step 1/4: Transforming training data to Gaussian space...")
+    data_train_z = transform_dataset_into_gaussian(original_data)
+
+    print("-> Step 2/4: Generating new independent Gaussian samples...")
+    n_cols = len(original_data.columns)
+    z_independent = pd.DataFrame(np.random.randn(n_samples, n_cols), columns=original_data.columns)
+
+    print("-> Step 3/4: Applying learned correlations to new samples...")
+    z_correlated = generate_correlations(data_train_z, z_independent)
+
+    print("-> Step 4/4: Transforming correlated samples back to original data space...")
+    synthetic_data = transform_dataset_from_gaussian(z_correlated, original_data)
+    
+    return synthetic_data

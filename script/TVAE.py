@@ -18,7 +18,6 @@ from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
 from sdv.single_table import TVAESynthesizer
-from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
 import wandb
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
@@ -29,7 +28,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the custom functions
-from src.metrics import get_metrics, run_tstr_evaluation
+from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -105,37 +104,6 @@ def load_or_train_synthesizer(training_data, metadata, model_path, report_path):
         print("Model saved successfully.")
         return synthesizer, training_time
 
-def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa, training_time, evaluation_time, tstr_results):
-    """Generates reports, saves them, and returns the scores as a dictionary."""
-    print(f"--- Evaluating against ORIGINAL data and saving reports to '{report_path}' ---")
-    diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
-    quality_report = evaluate_quality(original_real_data, synthetic_data, metadata)
-    
-    combined_report_data = {
-        'diagnostic_report': {'properties': diagnostic_report.get_properties().to_dict('records')},
-        'quality_report': {
-            'overall_score': quality_report.get_score(),
-            'properties': quality_report.get_properties().to_dict('records')
-        },
-        'metrics_qa': { "overall_accuracy": metrics_qa.accuracy.overall,
-            "univariate_accuracy": metrics_qa.accuracy.univariate,
-            "bivariate_accuracy": metrics_qa.accuracy.bivariate,
-            "discriminator_auc": metrics_qa.similarity.discriminator_auc_training_synthetic,
-            "identical_matches": metrics_qa.distances.ims_training,
-            "dcr_training": metrics_qa.distances.dcr_training,
-            "dcr_holdout": metrics_qa.distances.dcr_holdout,
-            "dcr_share": metrics_qa.distances.dcr_share
-        },
-        "times":{"training_time": training_time,
-                 "evaluation_time": evaluation_time},
-        
-        "tstr_evaluation": tstr_results
-    }
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    with open(report_path, 'w') as f:
-        json.dump(combined_report_data, f, indent=4)
-    print(f"Combined report saved successfully.")
-    return combined_report_data
 
 # --------------------------------------------------------------------------
 # 3. MAIN EXECUTION

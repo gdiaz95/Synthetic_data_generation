@@ -46,8 +46,7 @@ def load_and_prepare_data(metadata_path):
     print("Dataset loaded successfully.")
     return adult_df, metadata
 
-# SIMPLIFIED: This function now only loads or trains, and reports if it trained.
-def load_or_train_synthesizer(training_data, metadata, model_path,report_path):
+def load_or_train_synthesizer(training_data, metadata, model_path, report_path):
     """
     Loads a synthesizer if it exists, otherwise trains a new one.
     Returns the synthesizer and a boolean indicating if training occurred.
@@ -56,6 +55,9 @@ def load_or_train_synthesizer(training_data, metadata, model_path,report_path):
         print(f"Found existing model at '{model_path}'. Loading...")
         synthesizer = load_synthesizer(model_path)
         print("Model loaded successfully.")
+        
+        training_time = 0.0  
+        
         if os.path.exists(report_path):
             try:
                 with open(report_path, 'r') as f:
@@ -80,7 +82,7 @@ def load_or_train_synthesizer(training_data, metadata, model_path,report_path):
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         synthesizer.save(model_path)
         print("Model saved successfully.")
-        return synthesizer, training_time  # Return a flag indicating model was trained
+        return synthesizer, training_time  # Return a flag indicating model was loaded
 
 
 def main():
