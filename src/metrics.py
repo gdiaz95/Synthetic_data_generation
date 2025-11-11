@@ -7,6 +7,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, LabelEncoder
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
+from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
+import json
 import warnings
 
 '''
@@ -118,3 +120,36 @@ def run_tstr_evaluation(
         performance_gap_pct = performance_gap * 100
         
     return score_real, score_synthetic, performance_gap_pct
+
+def evaluate_and_save_reports(original_real_data, synthetic_data, metadata, report_path, metrics_qa, training_time, evaluation_time, tstr_results):
+    """Generates reports, saves them, and returns the scores as a dictionary."""
+    print(f"--- Evaluating and saving reports to '{report_path}' ---")
+    diagnostic_report = run_diagnostic(original_real_data, synthetic_data, metadata)
+    quality_report = evaluate_quality(original_real_data, synthetic_data, metadata)
+    
+    combined_report_data = {
+        'diagnostic_report': {'properties': diagnostic_report.get_properties().to_dict('records')},
+        'quality_report': {
+            'overall_score': quality_report.get_score(),
+            'properties': quality_report.get_properties().to_dict('records')
+        },
+        'metrics_qa': { "overall_accuracy": metrics_qa.accuracy.overall,
+            "univariate_accuracy": metrics_qa.accuracy.univariate,
+            "bivariate_accuracy": metrics_qa.accuracy.bivariate,
+            "discriminator_auc": metrics_qa.similarity.discriminator_auc_training_synthetic,
+            "identical_matches": metrics_qa.distances.ims_training,
+            "dcr_training": metrics_qa.distances.dcr_training,
+            "dcr_holdout": metrics_qa.distances.dcr_holdout,
+            "dcr_share": metrics_qa.distances.dcr_share
+        },
+        "times":{"training_time": training_time,
+                 "evaluation_time": evaluation_time},
+        
+        # --- ADDED THIS LINE ---
+        "tstr_evaluation": tstr_results
+    }
+    os.makedirs(os.path.dirname(report_path), exist_ok=True)
+    with open(report_path, 'w') as f:
+        json.dump(combined_report_data, f, indent=4)
+    print(f"Combined report saved successfully.")
+    return combined_report_data
