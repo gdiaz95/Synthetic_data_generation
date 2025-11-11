@@ -15,7 +15,6 @@ import time
 from sklearn.model_selection import train_test_split
 from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
-from sdv.utils import load_synthesizer
 from sdv.single_table import CopulaGANSynthesizer
 import wandb
 from xgboost import XGBClassifier
@@ -28,6 +27,7 @@ if project_root not in sys.path:
 
 # Import the custom functions
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
+from src.loader import load_or_train_synthesizer
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -52,50 +52,6 @@ def load_and_prepare_data(metadata_path):
     print("Dataset loaded successfully.")
     return adult_df, metadata
 
-# MODIFIED: To handle training time and read from report
-def load_or_train_synthesizer(training_data, metadata, model_path, report_path):
-    """
-    Loads a synthesizer if it exists, otherwise trains a new one.
-    Returns the synthesizer and the time it took to train (reads from report if loaded).
-    """
-    if os.path.exists(model_path):
-        print(f"Found existing model at '{model_path}'. Loading...")
-        synthesizer = load_synthesizer(model_path)
-        print("Model loaded successfully.")
-        
-        # Logic to read training_time from the existing report
-        training_time = 0.0  # Default if report/key doesn't exist
-        if os.path.exists(report_path):
-            try:
-                with open(report_path, 'r') as f:
-                    report_data = json.load(f)
-                training_time = report_data['times']['training_time']
-                print(f"Read existing training time from report: {training_time}s")
-            except Exception as e:
-                print(f"Warning: Could not read training time from report '{report_path}'. Defaulting to 0.0. Error: {e}")
-        else:
-            print(f"Warning: Report file '{report_path}' not found. Defaulting training time to 0.0.")
-            
-        return synthesizer, training_time
-    
-    else:
-        print(f"No model found. Training a new model...")
-        synthesizer = CopulaGANSynthesizer(metadata, verbose=True) # <-- CORRECT MODEL
-        
-        start_time = time.time()
-        synthesizer.fit(training_data)
-        training_time = time.time() - start_time
-        
-        print(f"Training complete. Saving model to '{model_path}'...")
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        synthesizer.save(model_path)
-        print("Model saved successfully.")
-        return synthesizer, training_time
-
-
-# --------------------------------------------------------------------------
-# 3. MAIN EXECUTION
-# --------------------------------------------------------------------------
 
 def main():
     """Main function to orchestrate the iterative pipeline and W&B logging."""
@@ -138,9 +94,13 @@ def main():
             train_data = current_training_data
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
-        # MODIFIED: Use train_data, pass report_path, capture training_time
+        synthesizer_to_fit = CopulaGANSynthesizer(metadata, verbose=True)
+        
         synthesizer, training_time = load_or_train_synthesizer(
-            train_data, metadata, model_path, report_path
+            training_data=train_data,
+            model_path=model_path,
+            report_path=report_path,
+            synthesizer_to_fit=synthesizer_to_fit
         )
         
         # 2. W&B Initialization

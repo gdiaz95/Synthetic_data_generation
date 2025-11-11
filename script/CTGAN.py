@@ -5,11 +5,9 @@ synthetic data using the CTGAN model. It logs training losses and evaluation
 scores to Weights & Biases, allowing runs to be updated.
 """
 import os
-import json
 import pandas as pd
 from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
-from sdv.utils import load_synthesizer
 from sdv.single_table import CTGANSynthesizer
 import sys
 import time
@@ -24,6 +22,7 @@ if project_root not in sys.path:
 
 # Import the custom metrics function
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
+from src.loader import load_or_train_synthesizer
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -46,50 +45,12 @@ def load_and_prepare_data(metadata_path):
     print("Dataset loaded successfully.")
     return adult_df, metadata
 
-def load_or_train_synthesizer(training_data, metadata, model_path, report_path):
-    """
-    Loads a synthesizer if it exists, otherwise trains a new one.
-    Returns the synthesizer and a boolean indicating if training occurred.
-    """
-    if os.path.exists(model_path):
-        print(f"Found existing model at '{model_path}'. Loading...")
-        synthesizer = load_synthesizer(model_path)
-        print("Model loaded successfully.")
-        
-        training_time = 0.0  
-        
-        if os.path.exists(report_path):
-            try:
-                with open(report_path, 'r') as f:
-                    report_data = json.load(f)
-                # Navigate to the correct key
-                training_time = report_data['times']['training_time']
-                print(f"Read existing training time from report: {training_time}s")
-            except Exception as e:
-                print(f"Warning: Could not read training time from report '{report_path}'. Defaulting to 0.0. Error: {e}")
-        else:
-            print(f"Warning: Report file '{report_path}' not found. Defaulting training time to 0.0.")
-
-        return synthesizer, training_time  # Return a flag indicating model was loaded
-    else:
-        print(f"No model found. Training a new model...")
-        synthesizer = CTGANSynthesizer(metadata, verbose=True)
-        start_time = time.time()
-        synthesizer.fit(training_data)
-        training_time = time.time() - start_time
-        
-        print(f"Training complete. Saving model to '{model_path}'...")
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        synthesizer.save(model_path)
-        print("Model saved successfully.")
-        return synthesizer, training_time  # Return a flag indicating model was loaded
-
 
 def main():
     """Main function to orchestrate the iterative pipeline and W&B logging."""
     # --- Configuration ---
     MODEL_TYPE = 'CTGAN'
-    TOTAL_ITERATIONS = 10
+    TOTAL_ITERATIONS = 1
     
     tstr_models = {
         "XGBoost Classifier": XGBClassifier(random_state=42, eval_metric='logloss')
@@ -123,7 +84,15 @@ def main():
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         # 1. Load or train the model (was_trained is ignored in the logging logic)
-        synthesizer, training_time = load_or_train_synthesizer(train_data, metadata, model_path, report_path)
+        synthesizer_to_fit = CTGANSynthesizer(metadata, verbose=True)
+
+        # Pass it to the new generic function
+        synthesizer, training_time = load_or_train_synthesizer(
+            training_data=train_data,
+            model_path=model_path,
+            report_path=report_path,
+            synthesizer_to_fit=synthesizer_to_fit
+        )
 
         # 2. W&B Initialization (Maintain 10 runs)
         run_id = None
