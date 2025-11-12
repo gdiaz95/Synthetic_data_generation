@@ -8,15 +8,10 @@ scores to Weights & Biases, allowing runs to be updated.
 # --------------------------------------------------------------------------
 # 1. IMPORTS
 # --------------------------------------------------------------------------
-from importlib.metadata import metadata
 import os
-import json
-import pandas as pd
 import sys
 import time
 from sklearn.model_selection import train_test_split
-from ucimlrepo import fetch_ucirepo
-from sdv.metadata import Metadata
 from sdv.single_table import TVAESynthesizer
 import wandb
 from xgboost import XGBClassifier
@@ -29,41 +24,12 @@ if project_root not in sys.path:
 
 # Import the custom functions
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
-from src.loader import load_or_train_synthesizer
+from src.loader import load_or_train_synthesizer, load_and_prepare_data
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
-# --------------------------------------------------------------------------
-# 2. FUNCTION DEFINITIONS
-# --------------------------------------------------------------------------
-
-def load_and_prepare_data(metadata_path):
-    """
-    Fetches the UCI Adult dataset and prepares the data. It loads metadata
-    from a file if it exists, otherwise it detects and saves it.
-    """
-    print("Loading and preparing original dataset...")
-    adult = fetch_ucirepo(id=2)
-    adult_df = pd.concat([adult.data.features, adult.data.targets], axis=1)
-    adult_df['income'] = adult_df['income'].str.strip().str.replace('.', '', regex=False)
-    
-    if os.path.exists(metadata_path):
-        print(f"Loading metadata from '{metadata_path}'...")
-        metadata = Metadata.load_from_json(filepath=metadata_path)
-    else:
-        print("Detecting metadata from data...")
-        metadata = Metadata()
-        metadata.detect_table_from_dataframe(
-            table_name='adult_data',
-            data=adult_df
-        )
-        metadata.save_to_json(filepath=metadata_path)
-        print(f"Metadata detected and saved to '{metadata_path}'.")
-
-    print("Dataset loaded successfully.")
-    return adult_df, metadata
 
 
 def main():
@@ -72,7 +38,7 @@ def main():
     MODEL_TYPE = 'TVAE'
     TOTAL_ITERATIONS = 1
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    METADATA_PATH = os.path.join(PROJECT_ROOT, 'metadata.json')
+    METADATA_PATH = os.path.join(PROJECT_ROOT, 'metadata/adults/metadata.json')
     BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, 'models', MODEL_TYPE)
     BASE_REPORT_DIR = os.path.join(PROJECT_ROOT, 'reports', MODEL_TYPE)
     FINAL_EVAL_STEP = 9999

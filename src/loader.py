@@ -1,6 +1,9 @@
 import os
 import json
 import time
+import pandas as pd
+from ucimlrepo import fetch_ucirepo
+from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
 
 def load_or_train_synthesizer(training_data, model_path, report_path, synthesizer_to_fit):
@@ -51,3 +54,17 @@ def load_or_train_synthesizer(training_data, model_path, report_path, synthesize
         
         return synthesizer, training_time
 
+def load_and_prepare_data(metadata_path):
+    """Loads the Adult dataset and the project's metadata."""
+    print("Loading original dataset and metadata...")
+    adult = fetch_ucirepo(id=2)
+    adult_df = pd.concat([adult.data.features, adult.data.targets], axis=1)
+    adult_df['income'] = adult_df['income'].str.strip().str.replace('.', '', regex=False)
+    if os.path.exists(metadata_path):
+        metadata = Metadata.load_from_json(filepath=metadata_path)
+    else:
+        metadata = Metadata()
+        metadata.detect_table_from_dataframe(table_name='adult_data', data=adult_df)
+        metadata.save_to_json(filepath=metadata_path)
+    print("Dataset loaded successfully.")
+    return adult_df, metadata

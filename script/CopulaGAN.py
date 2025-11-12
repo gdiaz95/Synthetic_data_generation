@@ -8,13 +8,9 @@ synthetic data using the CopulaGAN model, logging all results to W&B.
 # 1. IMPORTS
 # --------------------------------------------------------------------------
 import os
-import json
-import pandas as pd
 import sys
 import time
 from sklearn.model_selection import train_test_split
-from ucimlrepo import fetch_ucirepo
-from sdv.metadata import Metadata
 from sdv.single_table import CopulaGANSynthesizer
 import wandb
 from xgboost import XGBClassifier
@@ -27,39 +23,20 @@ if project_root not in sys.path:
 
 # Import the custom functions
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
-from src.loader import load_or_train_synthesizer
+from src.loader import load_or_train_synthesizer, load_and_prepare_data
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
-
-# --------------------------------------------------------------------------
-# 2. FUNCTION DEFINITIONS
-# --------------------------------------------------------------------------
-
-def load_and_prepare_data(metadata_path):
-    """Loads the Adult dataset and the project's metadata."""
-    print("Loading original dataset and metadata...")
-    adult = fetch_ucirepo(id=2)
-    adult_df = pd.concat([adult.data.features, adult.data.targets], axis=1)
-    adult_df['income'] = adult_df['income'].str.strip().str.replace('.', '', regex=False)
-    if os.path.exists(metadata_path):
-        metadata = Metadata.load_from_json(filepath=metadata_path)
-    else:
-        metadata = Metadata()
-        metadata.detect_table_from_dataframe(table_name='adult_data', data=adult_df)
-        metadata.save_to_json(filepath=metadata_path)
-    print("Dataset loaded successfully.")
-    return adult_df, metadata
 
 
 def main():
     """Main function to orchestrate the iterative pipeline and W&B logging."""
     # --- Configuration ---
     MODEL_TYPE = 'CopulaGAN' # <-- CORRECT MODEL
-    TOTAL_ITERATIONS = 10
+    TOTAL_ITERATIONS = 1
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    METADATA_PATH = os.path.join(PROJECT_ROOT, 'metadata.json')
+    METADATA_PATH = os.path.join(PROJECT_ROOT, 'metadata/adults/metadata.json')
     BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, 'models', MODEL_TYPE)
     BASE_REPORT_DIR = os.path.join(PROJECT_ROOT, 'reports', MODEL_TYPE)
     FINAL_EVAL_STEP = 9999
