@@ -54,17 +54,47 @@ def load_or_train_synthesizer(training_data, model_path, report_path, synthesize
         
         return synthesizer, training_time
 
-def load_and_prepare_data(metadata_path):
-    """Loads the Adult dataset and the project's metadata."""
-    print("Loading original dataset and metadata...")
-    adult = fetch_ucirepo(id=2)
-    adult_df = pd.concat([adult.data.features, adult.data.targets], axis=1)
-    adult_df['income'] = adult_df['income'].str.strip().str.replace('.', '', regex=False)
+def load_and_prepare_data(dataset_name, metadata_path):
+    """
+    Loads and prepares the specified dataset and its metadata.
+    
+    Returns the dataframe, metadata, and the dataset's target column.
+    """
+    print(f"--- Loading dataset: {dataset_name} ---")
+    
+    if dataset_name == 'adults':
+        # --- Adults Dataset Logic ---
+        print("Loading original 'adults' dataset and metadata...")
+        data = fetch_ucirepo(id=2)
+        df = pd.concat([data.data.features, data.data.targets], axis=1)
+        df['income'] = df['income'].str.strip().str.replace('.', '', regex=False)
+        table_name = 'adult_data'
+        target_column = 'income' # <-- Dataset-specific target
+        # --- End Adults Logic ---
+
+    # --- ADD NEW DATASETS HERE ---
+    # elif dataset_name == 'your_next_dataset':
+    #     print("Loading 'your_next_dataset'...")
+    #     # df = ... (load your data)
+    #     # ... (do your preprocessing)
+    #     # table_name = 'some_table'
+    #     # target_column = 'some_target'
+    
+    else:
+        raise ValueError(f"Dataset '{dataset_name}' is not recognized in src/loader.py")
+
+    # --- Generic Metadata Handling ---
     if os.path.exists(metadata_path):
         metadata = Metadata.load_from_json(filepath=metadata_path)
     else:
+        print("Metadata not found. Detecting from dataframe...")
         metadata = Metadata()
-        metadata.detect_table_from_dataframe(table_name='adult_data', data=adult_df)
+        metadata.detect_table_from_dataframe(table_name=table_name, data=df)
+        os.makedirs(os.path.dirname(metadata_path), exist_ok=True)
         metadata.save_to_json(filepath=metadata_path)
-    print("Dataset loaded successfully.")
-    return adult_df, metadata
+        print(f"New metadata saved to '{metadata_path}'")
+        
+    print(f"Dataset '{dataset_name}' loaded successfully.")
+    
+    # <-- RETURN THE TARGET COLUMN ---
+    return df, metadata, target_column

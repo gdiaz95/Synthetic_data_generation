@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 import wandb
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
+import argparse
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
@@ -26,11 +27,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def main():
+def main(args):
     """Main function to orchestrate the iterative pipeline and W&B logging."""
     # --- Configuration ---
     MODEL_TYPE = 'CTGAN'
-    TOTAL_ITERATIONS = 1
+    TOTAL_ITERATIONS = args.iterations
+    DATASET_NAME = args.dataset
     
     tstr_models = {
         "XGBoost Classifier": XGBClassifier(random_state=42, eval_metric='logloss')
@@ -38,15 +40,14 @@ def main():
     tstr_metrics = {
         "Accuracy": accuracy_score
     }
-    
-    target_column = 'income'    
+ 
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    DATASET_NAME = 'adults'
     METADATA_PATH = os.path.join(PROJECT_ROOT, f'metadata/{DATASET_NAME}/metadata.json')
     BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, f'models/{DATASET_NAME}', MODEL_TYPE)
     BASE_REPORT_DIR = os.path.join(PROJECT_ROOT, f'reports/{DATASET_NAME}', MODEL_TYPE)
     FINAL_EVAL_STEP = 9999
-    original_adult_df, metadata = load_and_prepare_data(METADATA_PATH)
+    # --- Initial Setup ---
+    original_adult_df, metadata, target_column = load_and_prepare_data(DATASET_NAME, METADATA_PATH)
     current_training_data = original_adult_df.copy()
 
     # --- Iteration Loop ---
@@ -190,4 +191,17 @@ def main():
         print(f"{'='*20} FINISHED ITERATION {i}/{TOTAL_ITERATIONS} {'='*20}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run a synthetic data generation pipeline.")
+    
+    parser.add_argument('-d', '--dataset', 
+                        type=str, 
+                        default='adults', 
+                        help='Name of the dataset to process (must match a case in src/loader.py)')
+    
+    parser.add_argument('-i', '--iterations', 
+                        type=int, 
+                        default=1, 
+                        help='Number of iterations to run.')
+    
+    args = parser.parse_args()
+    main(args)

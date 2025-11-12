@@ -15,6 +15,7 @@ from sdv.single_table import CopulaGANSynthesizer
 import wandb
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
+import argparse
 
 # This makes the script runnable from anywhere
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -30,12 +31,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def main():
+def main(args):
     """Main function to orchestrate the iterative pipeline and W&B logging."""
     # --- Configuration ---
     MODEL_TYPE = 'CopulaGAN' # <-- CORRECT MODEL
-    TOTAL_ITERATIONS = 1
-    DATASET_NAME = 'adults'
+    TOTAL_ITERATIONS = args.iterations
+    DATASET_NAME = args.dataset
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     METADATA_PATH = os.path.join(PROJECT_ROOT, f'metadata/{DATASET_NAME}/metadata.json')
     BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, f'models/{DATASET_NAME}', MODEL_TYPE)
@@ -48,10 +49,9 @@ def main():
     tstr_metrics = {
         "Accuracy": accuracy_score
     }
-    target_column = 'income'
 
     # --- Initial Setup ---
-    original_adult_df, metadata = load_and_prepare_data(METADATA_PATH)
+    original_adult_df, metadata, target_column = load_and_prepare_data(DATASET_NAME, METADATA_PATH)
     current_training_data = original_adult_df.copy()
 
     holdout_data = None
@@ -203,4 +203,17 @@ def main():
         print(f"{'='*20} FINISHED ITERATION {i}/{TOTAL_ITERATIONS} {'='*20}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run a synthetic data generation pipeline.")
+    
+    parser.add_argument('-d', '--dataset', 
+                        type=str, 
+                        default='adults', 
+                        help='Name of the dataset to process (must match a case in src/loader.py)')
+    
+    parser.add_argument('-i', '--iterations', 
+                        type=int, 
+                        default=1, 
+                        help='Number of iterations to run.')
+    
+    args = parser.parse_args()
+    main(args)
