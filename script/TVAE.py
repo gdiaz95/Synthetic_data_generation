@@ -38,9 +38,10 @@ def main():
     MODEL_TYPE = 'TVAE'
     TOTAL_ITERATIONS = 1
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    METADATA_PATH = os.path.join(PROJECT_ROOT, 'metadata/adults/metadata.json')
-    BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, 'models', MODEL_TYPE)
-    BASE_REPORT_DIR = os.path.join(PROJECT_ROOT, 'reports', MODEL_TYPE)
+    DATASET_NAME = 'adults'
+    METADATA_PATH = os.path.join(PROJECT_ROOT, f'metadata/{DATASET_NAME}/metadata.json')
+    BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, f'models/{DATASET_NAME}', MODEL_TYPE)
+    BASE_REPORT_DIR = os.path.join(PROJECT_ROOT, f'reports/{DATASET_NAME}', MODEL_TYPE)
     FINAL_EVAL_STEP = 9999
 
 
@@ -92,9 +93,13 @@ def main():
 
         run = wandb.init(
             project="synthetic-data-generation",
-            group=MODEL_TYPE,
-            name=f"{MODEL_TYPE}_iteration-{i}",
-            config={"model_type": MODEL_TYPE, "iteration": i},
+            group=f"{DATASET_NAME}/{MODEL_TYPE}", 
+            name=f"{DATASET_NAME}_{MODEL_TYPE}_iter-{i}", 
+            config={
+                "dataset": DATASET_NAME, 
+                "model_type": MODEL_TYPE, 
+                "iteration": i
+            },
             id=run_id,
             resume="allow"
         )
