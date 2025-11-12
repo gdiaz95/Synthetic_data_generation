@@ -71,6 +71,76 @@ def load_and_prepare_data(dataset_name, metadata_path):
         table_name = 'adult_data'
         target_column = 'income' # <-- Dataset-specific target
         # --- End Adults Logic ---
+        
+    elif dataset_name == 'car_evaluation':
+        # --- Car Evaluation Dataset Logic ---
+        print("Loading 'Car Evaluation' dataset and metadata...")
+        data = fetch_ucirepo(id=19)
+        df = pd.concat([data.data.features, data.data.targets], axis=1)
+
+        # Rename target for clarity (UCI uses 'class')
+        df.rename(columns={'class': 'car_acceptability'}, inplace=True)
+
+        table_name = 'car_evaluation_data'
+        target_column = 'car_acceptability'
+        
+    elif dataset_name == 'balance_scale':
+        # --- Balance Scale Dataset Logic ---
+        print("Loading 'Balance Scale' dataset and metadata...")
+        data = fetch_ucirepo(id=12)
+        df = pd.concat([data.data.features, data.data.targets], axis=1)
+
+        # Rename target column for consistency
+        df.rename(columns={'class': 'balance_class'}, inplace=True)
+
+        table_name = 'balance_scale_data'
+        target_column = 'balance_class'
+        
+    elif dataset_name == 'nursery':
+        # --- Nursery Dataset Logic ---
+        print("Loading 'Nursery' dataset and metadata...")
+        data = fetch_ucirepo(id=26)
+        df = pd.concat([data.data.features, data.data.targets], axis=1)
+
+        # Rename target for consistency
+        df.rename(columns={'class': 'nursery_class'}, inplace=True)
+
+        table_name = 'nursery_data'
+        target_column = 'nursery_class'
+    
+    elif dataset_name == 'student_performance':
+        print("Loading 'Student Performance' dataset and metadata...")
+        data = fetch_ucirepo(id=320)
+        df = pd.concat([data.data.features, data.data.targets], axis=1)
+
+        grade_cols = ['G1', 'G2', 'G3']
+        df['avg_grade'] = df[grade_cols].astype(float).mean(axis=1)
+
+        # Define pass/fail based on average grade
+        df['performance_category'] = df['avg_grade'].apply(lambda x: 'pass' if x >= 10 else 'fail')
+
+        # Drop the raw grade columns
+        df.drop(columns=grade_cols, inplace=True)
+        df.drop(columns=['avg_grade'], inplace=True)
+
+        table_name = 'student_performance_data'
+        target_column = 'performance_category'
+        
+        
+    elif dataset_name == 'student_dropout_success':
+        print("Loading 'Predict Students’ Dropout and Academic Success' dataset and metadata...")
+        data = fetch_ucirepo(id=697)
+
+        # Combine features and target(s)
+        df = pd.concat([data.data.features, data.data.targets], axis=1)
+
+        # Ensure we have exactly one target column; rename it consistently
+
+        original_target_name = data.data.targets.columns[0]
+        df.rename(columns={original_target_name: 'student_outcome'}, inplace=True)
+
+        table_name = 'student_dropout_success_data'
+        target_column = 'student_outcome'
 
     # --- ADD NEW DATASETS HERE ---
     # elif dataset_name == 'your_next_dataset':
