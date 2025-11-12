@@ -16,6 +16,9 @@ import wandb
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
 import argparse
+import random
+import numpy as np
+SEED = 42
 
 # This makes the script runnable from anywhere
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -36,6 +39,8 @@ def main(args):
     """Main function to orchestrate the iterative pipeline and W&B logging."""
     # --- Configuration ---
     MODEL_TYPE = 'CopulaGAN' # <-- CORRECT MODEL
+    random.seed(SEED)
+    np.random.seed(SEED)
     TOTAL_ITERATIONS = args.iterations
     DATASET_NAME = args.dataset
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -45,7 +50,7 @@ def main(args):
     FINAL_EVAL_STEP = 9999
 
     tstr_models = {
-        "XGBoost Classifier": XGBClassifier(random_state=42, eval_metric='logloss')
+        "XGBoost Classifier": XGBClassifier(random_state=SEED, eval_metric='logloss')
     }
     tstr_metrics = {
         "Accuracy": accuracy_score
@@ -68,12 +73,16 @@ def main(args):
         # ADDED: Split data into training and holdout sets
         print(f"\nSplitting data into training and holdout sets for iteration {i}...")
         if i == 1:
-            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=42)
+            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=SEED)
         else:
             train_data = current_training_data
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         synthesizer_to_fit = CopulaGANSynthesizer(metadata, verbose=True)
+        try:
+            synthesizer_to_fit.set_random_state(SEED)
+        except Exception:
+            pass
         
         synthesizer, training_time = load_or_train_synthesizer(
             training_data=train_data,
@@ -146,7 +155,8 @@ def main(args):
                     synthetic_data=synthetic_data,
                     target_column=target_column,
                     model=model,
-                    metric_func=metric_func
+                    metric_func=metric_func,
+                    random_state=SEED
                 )
                 
                 # Create a simple, flat name for the report

@@ -13,6 +13,9 @@ import wandb
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
 import argparse
+import random
+import numpy as np
+SEED = 42
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
@@ -34,9 +37,11 @@ def main(args):
     MODEL_TYPE = 'CTGAN'
     TOTAL_ITERATIONS = args.iterations
     DATASET_NAME = args.dataset
+    random.seed(SEED)
+    np.random.seed(SEED)
     
     tstr_models = {
-        "XGBoost Classifier": XGBClassifier(random_state=42, eval_metric='logloss')
+        "XGBoost Classifier": XGBClassifier(random_state=SEED, eval_metric='logloss')
     }
     tstr_metrics = {
         "Accuracy": accuracy_score
@@ -61,13 +66,17 @@ def main(args):
         
         print(f"\nSplitting data into training and holdout sets for iteration {i}...")
         if i == 1:
-            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=42)
+            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=SEED)
         else:
             train_data = current_training_data
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         # 1. Load or train the model (was_trained is ignored in the logging logic)
         synthesizer_to_fit = CTGANSynthesizer(metadata, verbose=True)
+        try:
+            synthesizer_to_fit.set_random_state(SEED)
+        except Exception:
+            pass
 
         # Pass it to the new generic function
         synthesizer, training_time = load_or_train_synthesizer(
@@ -138,11 +147,12 @@ def main(args):
             for met_name, metric_func in tstr_metrics.items():
                 
                 score_real, score_synth, gap = run_tstr_evaluation(
-                    real_data=original_adult_df,  # Use the *full* original data
+                    real_data=original_adult_df,
                     synthetic_data=synthetic_data,
                     target_column=target_column,
                     model=model,
-                    metric_func=metric_func
+                    metric_func=metric_func,
+                    random_state=SEED
                 )
                 
                 # Create a simple, flat name for the report
