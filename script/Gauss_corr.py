@@ -25,6 +25,7 @@ if project_root not in sys.path:
 from src.correlator import generate_synthetic_data
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
 from src.loader import load_and_prepare_data
+from src.image_plotter import plot_marginals
 
 def main(args):
     """Main function to orchestrate the iterative pipeline and W&B logging."""
@@ -99,6 +100,9 @@ def main(args):
             n_samples=len(train_data)
         )
         generating_time = time.time() - start_time
+        
+        print("Plotting marginals...")
+        plot_marginals(DATASET_NAME, MODEL_TYPE, i, train_data, synthetic_data)
         
         print("\nRunning TSTR evaluation...")
         tstr_results = {}

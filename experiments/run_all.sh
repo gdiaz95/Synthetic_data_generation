@@ -1,12 +1,5 @@
 echo "Running all synthetic data generation experiments..."
 
-# Adults: run with 10 iterations
-python3 script/CopulaGAN.py --dataset adults --iterations 10
-python3 script/CTGAN.py --dataset adults --iterations 10
-python3 script/Gauss_corr.py --dataset adults --iterations 10
-python3 script/gaussian_copula.py --dataset adults --iterations 10
-python3 script/TVAE.py --dataset adults --iterations 10
-
 # Car Evaluation
 python3 script/CopulaGAN.py --dataset car_evaluation
 python3 script/CTGAN.py --dataset car_evaluation
@@ -41,5 +34,12 @@ python3 script/CTGAN.py --dataset student_dropout_success
 python3 script/Gauss_corr.py --dataset student_dropout_success
 python3 script/gaussian_copula.py --dataset student_dropout_success
 python3 script/TVAE.py --dataset student_dropout_success
+
+# Adults: run with 10 iterations
+python3 script/CopulaGAN.py --dataset adults --iterations 10
+python3 script/CTGAN.py --dataset adults --iterations 10
+python3 script/Gauss_corr.py --dataset adults --iterations 10
+python3 script/gaussian_copula.py --dataset adults --iterations 10
+python3 script/TVAE.py --dataset adults --iterations 10
 
 echo "All experiments completed!"

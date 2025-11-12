@@ -27,6 +27,7 @@ if project_root not in sys.path:
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
 from src.loader import load_or_train_synthesizer, load_and_prepare_data
 from dotenv import load_dotenv
+from src.image_plotter import plot_marginals
 
 # Load environment variables from .env file
 load_dotenv()
@@ -133,6 +134,9 @@ def main(args):
         # Generate data with the same size as the training set
         synthetic_data = synthesizer.sample(num_rows=len(train_data))
         evaluation_time = time.time() - start_eval_time
+        
+        print("Plotting marginals...")
+        plot_marginals(DATASET_NAME, MODEL_TYPE, i, train_data, synthetic_data)
 
         # --- ADDED: Run the TSTR (Train on Synthetic, Test on Real) evaluation ---
         print("\nRunning TSTR evaluation...")
