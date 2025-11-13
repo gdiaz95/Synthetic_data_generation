@@ -15,6 +15,9 @@ import wandb
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score 
 import argparse
+import random
+import numpy as np
+SEED = 42
 
 # This makes the script runnable from anywhere
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -33,7 +36,7 @@ def main(args):
     MODEL_TYPE = 'Gaussian_correlated' 
     
     tstr_models = {
-        "XGBoost Classifier": XGBClassifier(random_state=42, eval_metric='logloss')
+        "XGBoost Classifier": XGBClassifier(random_state=SEED, eval_metric='logloss')
     }
     tstr_metrics = {
         "Accuracy": accuracy_score
@@ -41,6 +44,8 @@ def main(args):
     
     TOTAL_ITERATIONS = args.iterations
     DATASET_NAME = args.dataset
+    random.seed(SEED)
+    np.random.seed(SEED)
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     METADATA_PATH = os.path.join(PROJECT_ROOT, f'metadata/{DATASET_NAME}/metadata.json')
     BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, f'models/{DATASET_NAME}', MODEL_TYPE)
@@ -87,7 +92,7 @@ def main(args):
         # 3. Split data into training and holdout sets
         print(f"\nSplitting data into training and holdout sets for iteration {i}...")
         if i == 1:
-            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=42)
+            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=SEED+1)
         else:
             train_data = current_training_data
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
@@ -97,7 +102,8 @@ def main(args):
         print(f"\nIteration {i}: Generating new synthetic sample using custom method...")
         synthetic_data = generate_synthetic_data(
             original_data=train_data,
-            n_samples=len(train_data)
+            n_samples=len(train_data),
+            seed=SEED + 1000 + i,
         )
         generating_time = time.time() - start_time
         
@@ -114,7 +120,8 @@ def main(args):
                     synthetic_data=synthetic_data,
                     target_column=target_column,
                     model=model,
-                    metric_func=metric_func
+                    metric_func=metric_func,
+                    random_state=SEED + 2000 + i
                 )
                 
                 # Log the TSTR scores for wandb

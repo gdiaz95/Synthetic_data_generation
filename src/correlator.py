@@ -4,26 +4,27 @@ import pandas as pd
 
 
 
-def transform_dataset_into_gaussian(df):
+def transform_dataset_into_gaussian(df, rng=None): # MODIFIED: Accept rng object
     """
     Transform each column of the input DataFrame into values following
     a standard normal distribution by:
       1) Computing the empirical CDF (continuous or categorical)
       2) Applying the inverse Gaussian (probit) transform
     """
+    rng = np.random.default_rng() if rng is None else rng
+    
     z_df = pd.DataFrame(index=df.index, columns=df.columns)
     for col in df.columns:
         if pd.api.types.is_numeric_dtype(df[col]):
-            u = empirical_cdf_continuous(df[col])
+            u = empirical_cdf_continuous(df[col], rng=rng) # Pass the rng object
         else:
             labels = list(np.sort(df[col].dropna().unique()))
-            u = empirical_cdf_categorical_column(df[col], labels)
+            u = empirical_cdf_categorical_column(df[col], labels, rng=rng) # Pass the rng object
         z_df[col] = uniform_to_gaussian(u)
     return z_df
 
 
-
-def empirical_cdf_continuous(column, integer_tolerance=1e-12, seed=None):
+def empirical_cdf_continuous(column, integer_tolerance=1e-12, rng=None):
     """
     Numeric ECDF → (0,1).
 
@@ -35,7 +36,7 @@ def empirical_cdf_continuous(column, integer_tolerance=1e-12, seed=None):
 
     NaNs are preserved as NaN in u.
     """
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng() if rng is None else rng
 
     arr = np.asarray(column, float)
     mask_nan = np.isnan(arr)
@@ -84,7 +85,7 @@ def empirical_cdf_continuous(column, integer_tolerance=1e-12, seed=None):
     u[~mask_nan] = u_valid
     return u
 
-def empirical_cdf_categorical_column(column, sorted_labels, seed=None, treat_nan_as_category=True):
+def empirical_cdf_categorical_column(column, sorted_labels, rng=None, treat_nan_as_category=True):
     """
     Fast, vectorized categorical → (0,1).
     For each occurrence of label ℓ, draw u = P_prev[ℓ] + r * p[ℓ], r~U(0,1).
@@ -92,7 +93,7 @@ def empirical_cdf_categorical_column(column, sorted_labels, seed=None, treat_nan
     If treat_nan_as_category=True, NaNs are treated as a separate category with
     their own probability mass (instead of being left as NaN).
     """
-    rng = np.random.RandomState(seed) if seed is not None else np.random
+    rng = np.random.default_rng() if rng is None else rng
     arr = np.asarray(column, dtype=object)
 
     # 🔹 Optionally treat NaN as a valid category
@@ -360,19 +361,31 @@ def generate_correlations(df_z_original, x_vector):
     X     = pd.DataFrame(X_arr, columns=df_z_original.columns)
     return X
 
-def generate_synthetic_data(original_data,n_samples):
+def generate_synthetic_data(original_data, n_samples, seed=None):
     """Generates synthetic data using the custom Gaussian Copula method."""
+    
+    # MODIFIED: Create ONE master RNG from the seed
+    rng = np.random.default_rng(seed)
+
     print("-> Step 1/4: Transforming training data to Gaussian space...")
-    data_train_z = transform_dataset_into_gaussian(original_data)
+    # MODIFIED: Pass the RNG object, not the seed
+    data_train_z = transform_dataset_into_gaussian(original_data, rng=rng)
 
     print("-> Step 2/4: Generating new independent Gaussian samples...")
     n_cols = len(original_data.columns)
-    z_independent = pd.DataFrame(np.random.randn(n_samples, n_cols), columns=original_data.columns)
+    
+    z_ind_values = rng.standard_normal(size=(n_samples, n_cols))
+    
+    z_independent = pd.DataFrame(z_ind_values, columns=original_data.columns)
+
 
     print("-> Step 3/4: Applying learned correlations to new samples...")
     z_correlated = generate_correlations(data_train_z, z_independent)
 
     print("-> Step 4/4: Transforming correlated samples back to original data space...")
+    # MODIFIED: The inverse transform doesn't need randomness, so it's fine.
+    # If it DID need randomness (e.g., for inverse categorical),
+    # you would pass the `rng` object to it as well.
     synthetic_data = transform_dataset_from_gaussian(z_correlated, original_data)
     
     return synthetic_data
