@@ -72,7 +72,7 @@ def main(args):
         
         print(f"\nSplitting data into training and holdout sets for iteration {i}...")
         if i == 1:
-            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=SEED)
+            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=SEED+1)
         else:
             train_data = current_training_data
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
@@ -80,7 +80,7 @@ def main(args):
         # 1. Load or fit the model
         synthesizer_to_fit = GaussianCopulaSynthesizer(metadata)
         try:
-            synthesizer_to_fit.set_random_state(SEED)
+            synthesizer_to_fit.set_random_state(SEED+1000+i)
         except Exception:
             pass
 
@@ -123,6 +123,7 @@ def main(args):
         # Generate Sample and Evaluation Scores
         print(f"\nIteration {i}: Generating synthetic sample and evaluating...")
         start_time = time.time()
+        synthesizer.set_random_state(SEED + 2000 + i)
         synthetic_data = synthesizer.sample(num_rows=len(train_data))
         evaluation_time = time.time() - start_time
         
@@ -141,7 +142,7 @@ def main(args):
                     target_column=target_column,
                     model=model,
                     metric_func=metric_func,
-                    random_state=SEED
+                    random_state=SEED+3000+i
                 )
                 
                 # Create a simple, flat name for the report

@@ -73,14 +73,14 @@ def main(args):
         # ADDED: Split data into training and holdout sets
         print(f"\nSplitting data into training and holdout sets for iteration {i}...")
         if i == 1:
-            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=SEED)
+            train_data, holdout_data = train_test_split(current_training_data, test_size=0.2, random_state=SEED+1)
         else:
             train_data = current_training_data
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         synthesizer_to_fit = CopulaGANSynthesizer(metadata, verbose=True)
         try:
-            synthesizer_to_fit.set_random_state(SEED)
+            synthesizer_to_fit.set_random_state(SEED+1000+i)
         except Exception:
             pass
         
@@ -138,6 +138,7 @@ def main(args):
         
         start_eval_time = time.time()
         # Generate data with the same size as the training set
+        synthesizer.set_random_state(SEED + 2000 + i)
         synthetic_data = synthesizer.sample(num_rows=len(train_data))
         evaluation_time = time.time() - start_eval_time
         
@@ -156,7 +157,7 @@ def main(args):
                     target_column=target_column,
                     model=model,
                     metric_func=metric_func,
-                    random_state=SEED
+                    random_state=SEED + 3000 + i
                 )
                 
                 # Create a simple, flat name for the report
