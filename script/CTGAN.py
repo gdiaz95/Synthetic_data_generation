@@ -15,6 +15,7 @@ from sklearn.metrics import accuracy_score
 import argparse
 import random
 import numpy as np
+import torch
 SEED = 42
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -73,10 +74,7 @@ def main(args):
 
         # 1. Load or train the model (was_trained is ignored in the logging logic)
         synthesizer_to_fit = CTGANSynthesizer(metadata, verbose=True)
-        try:
-            synthesizer_to_fit.set_random_state(SEED+1000+i)
-        except Exception:
-            pass
+        torch.manual_seed(SEED + 1000 + i)
 
         # Pass it to the new generic function
         synthesizer, training_time = load_or_train_synthesizer(
@@ -135,7 +133,7 @@ def main(args):
         
         start_eval_time = time.time()
         # Generate data with the same size as the training set
-        synthesizer.set_random_state(SEED + 2000 + i)
+        torch.manual_seed(SEED + 2000 + i)
         synthetic_data = synthesizer.sample(num_rows=len(train_data)) 
         evaluation_time = time.time() - start_eval_time
         

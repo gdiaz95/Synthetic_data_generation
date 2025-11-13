@@ -79,10 +79,7 @@ def main(args):
 
         # 1. Load or fit the model
         synthesizer_to_fit = GaussianCopulaSynthesizer(metadata)
-        try:
-            synthesizer_to_fit.set_random_state(SEED+1000+i)
-        except Exception:
-            pass
+        np.random.seed(SEED + 1000 + i)
 
         # Pass it to the new generic function
         synthesizer, training_time = load_or_train_synthesizer(
@@ -123,7 +120,7 @@ def main(args):
         # Generate Sample and Evaluation Scores
         print(f"\nIteration {i}: Generating synthetic sample and evaluating...")
         start_time = time.time()
-        synthesizer.set_random_state(SEED + 2000 + i)
+        np.random.seed(SEED + 2000 + i)
         synthetic_data = synthesizer.sample(num_rows=len(train_data))
         evaluation_time = time.time() - start_time
         
