@@ -97,7 +97,7 @@ def create_comparison_plots_adults_only():
 
                     all_scores_data.append({
                         'Iteration': i, 'Method': method,
-                        **{metric: None for metric in ALL_METRICS_TO_PLOT}, # Init all keys
+                        **{metric: None for metric in ALL_METRICS_TO_PLOT}, 
                         'Data Validity': diag_props.get('Data Validity'),
                         'Data Structure': diag_props.get('Data Structure'),
                         'Overall Score': report.get('quality_report', {}).get('overall_score'),
