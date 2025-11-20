@@ -147,7 +147,6 @@ def transform_dataset_from_gaussian(z_df, df_original):
     Transforms a DataFrame of correlated Gaussian samples back to the original
     data's domain, preserving marginal distributions and enforcing original data types.
     """
-    print("Transforming data from Gaussian space...")
 
     # --- Step 1: Efficiently classify columns based on their data type ---
     # This is cleaner than looping through dtypes.
@@ -196,7 +195,6 @@ def transform_dataset_from_gaussian(z_df, df_original):
             nan_frac = df_original[col].isna().mean()
             df_synthetic[col] = inverse_empirical_cdf_decimal_interp(u_samples, sorted_vals, nan_frac=nan_frac)
 
-    print("Enforcing original data types for structural similarity...")
     for col in df_original.columns:
         original_dtype = df_original[col].dtype
         if pd.api.types.is_integer_dtype(original_dtype) and df_synthetic[col].isnull().any():
