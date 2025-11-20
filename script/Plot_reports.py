@@ -176,6 +176,9 @@ def create_average_plots():
     output_dir = os.path.join(PROJECT_ROOT, 'images', 'report_average_comparison')
     os.makedirs(output_dir, exist_ok=True)
     
+    json_report_dir = os.path.join(report_base_dir, 'report_averages')
+    os.makedirs(json_report_dir, exist_ok=True)
+    
     run_id_file = os.path.join(output_dir, 'wandb.txt')
     run_id = None
     if os.path.exists(run_id_file):
@@ -287,6 +290,18 @@ def create_average_plots():
     table = wandb.Table(dataframe=avg_scores_df)
     run.log({"average_method_scores": table})
     print("-> Average table logged successfully.")
+    
+    print("\nSaving overall average scores to JSON file...")
+    avg_scores_pivoted_df = avg_scores_df.set_index('Method')
+    json_data = avg_scores_pivoted_df.T.to_dict('index')
+    json_save_path = os.path.join(json_report_dir, 'report_averages.json') 
+    
+    try:
+        with open(json_save_path, 'w') as f:
+            json.dump(json_data, f, indent=4)
+        print(f"Overall average saved to: {json_save_path}")
+    except Exception as e:
+        print(f"Error saving JSON file: {e}")
 
     # --- 4. Generate and Save Plots (Bar Plots) ---
     print("\nGenerating, saving, and logging average comparison plots...")
@@ -454,6 +469,18 @@ def create_dataset_average_plots():
         print("Logging scores to W&B table...")
         table = wandb.Table(dataframe=dataset_avg_df)
         run.log({f"{dataset_name}/method_scores/average_table": table})
+        
+        dataset_avg_pivoted_df = dataset_avg_df.set_index('Method')
+        transposed_df = dataset_avg_pivoted_df.T
+        dataset_avg_data = transposed_df.to_dict('index')
+        json_save_path = os.path.join(report_base_dir, 'report_dataset.json')
+
+        try:
+            with open(json_save_path, 'w') as f:
+                json.dump(dataset_avg_data, f, indent=4)
+            print(f"Dataset average saved in transposed format to: {json_save_path}")
+        except Exception as e:
+            print(f"Error saving JSON for {dataset_name}: {e}")
         
         # --- Generate and Save Plots (Bar Plots) ---
         print("Generating, saving, and logging comparison plots...")
