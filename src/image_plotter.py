@@ -41,4 +41,6 @@ def plot_marginals(dataset_name, model, i, real_df, synth_df):
 
         path = os.path.join(save_dir, f"{safe_col}.png")
         plt.savefig(path, dpi=150)
-        plt.close()
+        plt.close()           
+        plt.clf()             
+        plt.close('all')      

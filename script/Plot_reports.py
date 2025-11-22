@@ -20,7 +20,7 @@ DATASETS_TO_PROCESS = [
 ]
 
 METHODS = [
-    'CTGAN', 'GaussianCopula', 'CopulaGAN', 'TVAE', 'Gaussian_correlated'
+    'CTGAN', 'GaussianCopula', 'CopulaGAN', 'TVAE', 'Gaussian_correlated', 'NonParamGaussianCopula'
 ]
 
 COLOR_MAP = {
@@ -28,7 +28,8 @@ COLOR_MAP = {
     'GaussianCopula': '#ff7f0e',
     'CopulaGAN': '#2ca02c',
     'TVAE': '#d62728',
-    'Gaussian_correlated': '#9467bd'
+    'Gaussian_correlated': '#9467bd',
+    'NonParamGaussianCopula': '#8c564b'
 }
 
 ALL_METRICS_TO_PLOT = [

@@ -11,7 +11,6 @@ import os
 import sys
 import time
 from sklearn.model_selection import train_test_split
-from sdv.single_table import GaussianCopulaSynthesizer
 import wandb
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
@@ -25,6 +24,7 @@ SEED = 42
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+    
 
 # Import the custom functions
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
@@ -32,13 +32,18 @@ from src.loader import load_or_train_synthesizer, load_and_prepare_data
 from dotenv import load_dotenv
 from src.image_plotter import plot_marginals
 
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'))
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+from src.non_parametric import NonParamGaussianCopulaSynthesizer
+
 # Load environment variables from .env file
 load_dotenv()
 
 def main(args):
     """Main function to orchestrate the iterative pipeline and W&B logging."""
     # --- Configuration ---
-    MODEL_TYPE = 'GaussianCopula' # <-- CHANGED
+    MODEL_TYPE = 'NonParamGaussianCopula' # <-- CHANGED
     random.seed(SEED)
     np.random.seed(SEED)
     DATASET_NAME = args.dataset # <-- From args
@@ -77,7 +82,7 @@ def main(args):
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         # 1. Load or fit the model
-        synthesizer_to_fit = GaussianCopulaSynthesizer(metadata)
+        synthesizer_to_fit = NonParamGaussianCopulaSynthesizer()
         np.random.seed(SEED + 1000 + i)
 
         # Pass it to the new generic function

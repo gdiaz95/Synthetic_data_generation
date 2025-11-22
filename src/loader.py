@@ -17,7 +17,16 @@ def load_or_train_synthesizer(training_data, model_path, report_path, synthesize
     # --- BLOCK 1: Try to load existing model ---
     if os.path.exists(model_path):
         print(f"Found existing model at '{model_path}'. Loading...")
-        synthesizer = load_synthesizer(model_path)
+        
+        # Custom logic: Bypass SDV loader ONLY for the custom synthesizer
+        if type(synthesizer_to_fit).__name__ == "NonParamGaussianCopulaSynthesizer":
+            import pickle
+            with open(model_path, 'rb') as f:
+                synthesizer = pickle.load(f)
+        else:
+            # Standard loader for SDV models (TVAE, GaussianCopula, etc.)
+            synthesizer = load_synthesizer(model_path)
+            
         print("Model loaded successfully.")
         
         # Logic to read training_time from the existing report
