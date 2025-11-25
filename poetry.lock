@@ -3935,7 +3935,28 @@ files = [
     {file = "xxhash-3.6.0.tar.gz", hash = "sha256:f0162a78b13a0d7617b2845b90c763339d1f1d82bb04a4b07f4ab535cc5e05d6"},
 ]
 
+[[package]]
+name = "zuko"
+version = "1.5.0"
+description = "Normalizing flows in PyTorch"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "zuko-1.5.0-py3-none-any.whl", hash = "sha256:607ecca75a031cb82692266782e28cb7084f2dfe6e4bbea57682f7f45199726d"},
+    {file = "zuko-1.5.0.tar.gz", hash = "sha256:86ae48e3e8fe79841acbc4b2c54502ab22b2ba1a50a646ad7618303718e5c7b1"},
+]
+
+[package.dependencies]
+numpy = ">=1.20.0"
+torch = ">=1.12.0"
+
+[package.extras]
+docs = ["docutils (==0.19)", "furo (==2024.5.6)", "myst-nb (==1.0.0)", "sphinx (==7.3.7)"]
+lint = ["pre-commit (>=3.7.0)", "ruff (==0.9.9)"]
+test = ["pytest (>=8.0.0)"]
+
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <3.14"
-content-hash = "376caec61b0083c960d41551402b8141232e1ee275ff15f45b42a8ab3bcc60b4"
+content-hash = "cfc110f792e4c318428866d5f63f01c44db34e8937b29e56f895b50abd2dc1fb"

@@ -11,6 +11,7 @@ reports/
 wandb/
 
 tests.ipynb
+AI_tests.ipynb
 
 .env
 
