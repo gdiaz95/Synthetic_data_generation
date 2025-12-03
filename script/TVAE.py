@@ -144,7 +144,7 @@ def main(args):
         evaluation_time = time.time() - start_eval_time
         
         print("Plotting marginals...")
-        plot_marginals(DATASET_NAME, MODEL_TYPE, i, train_data, synthetic_data)
+        plot_marginals(DATASET_NAME, MODEL_TYPE, i, original_adult_df, synthetic_data)
 
         # --- ADDED: Run the TSTR (Train on Synthetic, Test on Real) evaluation ---
         print("\nRunning TSTR evaluation...")

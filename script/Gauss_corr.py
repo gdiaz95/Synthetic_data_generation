@@ -108,7 +108,7 @@ def main(args):
         generating_time = time.time() - start_time
         
         print("Plotting marginals...")
-        plot_marginals(DATASET_NAME, MODEL_TYPE, i, train_data, synthetic_data)
+        plot_marginals(DATASET_NAME, MODEL_TYPE, i, original_adult_df, synthetic_data)
         
         print("\nRunning TSTR evaluation...")
         tstr_results = {}
