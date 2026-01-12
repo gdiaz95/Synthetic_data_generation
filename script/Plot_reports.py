@@ -20,7 +20,7 @@ DATASETS_TO_PROCESS = [
 ]
 
 METHODS = [
-    'CTGAN', 'GaussianCopula', 'CopulaGAN', 'TVAE', 'Gaussian_correlated', 'NonParamGaussianCopula'
+    'CTGAN', 'GaussianCopula', 'CopulaGAN', 'TVAE', 'NonParamGaussianCopula'
 ]
 
 COLOR_MAP = {
@@ -28,7 +28,7 @@ COLOR_MAP = {
     'GaussianCopula': '#ff7f0e',
     'CopulaGAN': '#2ca02c',
     'TVAE': '#d62728',
-    'Gaussian_correlated': '#9467bd',
+    # 'Gaussian_correlated': '#9467bd',
     'NonParamGaussianCopula': '#8c564b'
 }
 
@@ -143,15 +143,21 @@ def create_comparison_plots_adults_only():
             continue
             
         plt.figure(figsize=(14, 8))
-        sns.lineplot(data=scores_df, x='Iteration', y=metric, hue='Method', 
-                     marker='o', palette=COLOR_MAP, hue_order=METHODS, linewidth=3, markersize=8)
+        sns.lineplot(data=scores_df, x='Iteration', y=scores_df[metric] * 100, hue='Method', 
+                     marker='o', palette=COLOR_MAP, hue_order=METHODS, linewidth=5, markersize=10)
         
-        plt.title(f'{dataset_name.capitalize()}: {metric} Comparison Across Methods', fontsize=18, pad=20)
-        plt.xlabel('Iteration', fontsize=12)
-        plt.ylabel('Score' if 'time' not in metric.lower() else 'Value', fontsize=12)
-        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-        plt.xticks(range(1, 11))
-        plt.legend(title='Method', bbox_to_anchor=(1.05, 1), loc='upper left')
+        # plt.title(f'{dataset_name.capitalize()}: {metric} Comparison Across Methods', fontsize=18, pad=20)
+        plt.xlabel('Iteration', fontsize=20)
+        plt.ylabel('Overall Score (%)', fontsize=20)
+        plt.ylabel('Overall Score (%)' if 'time' not in metric.lower() else 'Value', fontsize=20)
+        plt.grid(True, which='both', linestyle='--', linewidth=1)
+        plt.yticks(list(plt.yticks()[0]) + [100], fontsize=18)
+        plt.xticks(range(1, 11), fontsize=18)
+        plt.legend(
+            loc='lower left',
+            fontsize=18,         
+            title_fontsize=20   
+        )
         plt.tight_layout()
         wandb.log({f"{dataset_name}/comparison_plots/{metric}": wandb.Image(plt)})
         filename = metric.lower().replace(' ', '_').replace('%', 'perc').replace('/', '_') + '_comparison.png'
