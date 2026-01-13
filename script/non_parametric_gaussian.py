@@ -82,7 +82,7 @@ def main(args):
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         # 1. Load or fit the model
-        synthesizer_to_fit = NonParamGaussianCopulaSynthesizer()
+        synthesizer_to_fit = NonParamGaussianCopulaSynthesizer(epsilon=1)  
         np.random.seed(SEED + 1000 + i)
 
         # Pass it to the new generic function
@@ -92,7 +92,7 @@ def main(args):
             report_path=report_path,
             synthesizer_to_fit=synthesizer_to_fit
         )
-        
+        print(f"Using epsilon for differential privacy: {synthesizer.epsilon}")
         # 2. W&B Initialization
         run_id = None
         if os.path.exists(run_id_path):

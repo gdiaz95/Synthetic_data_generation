@@ -12,6 +12,7 @@ wandb/
 
 tests.ipynb
 AI_tests.ipynb
+tests_diff_privacy.ipynb
 
 .env
 
