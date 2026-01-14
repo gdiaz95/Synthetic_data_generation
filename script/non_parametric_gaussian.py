@@ -82,7 +82,7 @@ def main(args):
         print(f"Training data shape: {train_data.shape}, Holdout data shape: {holdout_data.shape}")
 
         # 1. Load or fit the model
-        synthesizer_to_fit = NonParamGaussianCopulaSynthesizer(epsilon=1)  
+        synthesizer_to_fit = NonParamGaussianCopulaSynthesizer()  
         np.random.seed(SEED + 1000 + i)
 
         # Pass it to the new generic function

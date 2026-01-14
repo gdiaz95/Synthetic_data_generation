@@ -101,8 +101,12 @@ class NonParamGaussianCopulaSynthesizer:
         """
         Learns the marginal distributions and correlation matrix with DP budget splitting.
         """
-        # SPLIT BUDGET: 50% for Marginals, 50% for Correlation (Reserved)
-        eps_marginal = epsilon * 0.5 if epsilon is not None else self.epsilon * 0.5
+        if epsilon is None or epsilon <= 0:
+            eps_marginal = None
+            eps_corr = None
+        else:
+            eps_marginal = epsilon * 0.5
+            eps_corr = epsilon * 0.5
         
         rng = np.random.default_rng()
         z_df = pd.DataFrame(index=df.index, columns=df.columns)
@@ -141,17 +145,39 @@ class NonParamGaussianCopulaSynthesizer:
                 u = self._empirical_cdf_categorical(series, sorted_labels, rng, epsilon=eps_marginal)
 
             z_df[col] = self._uniform_to_gaussian(u)
-        
-        # print("just used epsilon:", eps_marginal)
-        # Learn Raw Correlation
+            
         correlation_matrix = z_df.corr(method='pearson').fillna(0.0)
-        np.fill_diagonal(correlation_matrix.values, 1.0)
+        
+        if eps_corr:
+            n = len(z_df)
+            noise_scale = 2.0 / (n * eps_corr)
+            noise = rng.laplace(0, noise_scale, size=correlation_matrix.shape)
+            noisy_corr = correlation_matrix + noise
+            noisy_corr = (noisy_corr + noisy_corr.T) / 2
+            np.fill_diagonal(noisy_corr.values, 1.0)
+            fixed_corr_values = self._get_nearest_correlation_matrix(noisy_corr.values)
+            final_corr_df = pd.DataFrame(fixed_corr_values, columns=df.columns, index=df.columns)
+        else:
+            final_corr_df = correlation_matrix  
         
         return {
-            "correlation_matrix": correlation_matrix,
+            "correlation_matrix": final_corr_df,
             "marginals": marginals,
             "columns": df.columns.tolist()
         }
+    
+    def _get_nearest_correlation_matrix(self, matrix):
+        """
+        Finds the nearest Positive Semi-Definite (PSD) matrix.
+        Ensures the matrix can be used for Cholesky decomposition.
+        """
+        vals, vecs = np.linalg.eigh(matrix)
+        vals = np.clip(vals, 1e-8, None)
+        new_mat = (vecs * vals) @ vecs.T
+        d = np.sqrt(np.diag(new_mat))
+        new_mat = new_mat / np.outer(d, d)
+        
+        return new_mat
 
     def _generate_samples(self, n_samples, seed=None):
         rng = np.random.default_rng(seed)
