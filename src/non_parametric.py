@@ -154,7 +154,8 @@ class NonParamGaussianCopulaSynthesizer:
             noise = rng.laplace(0, noise_scale, size=correlation_matrix.shape)
             noisy_corr = correlation_matrix + noise
             noisy_corr = (noisy_corr + noisy_corr.T) / 2
-            np.fill_diagonal(noisy_corr.values, 1.0)
+            noisy_vals = np.array(noisy_corr.to_numpy(), copy=True)
+            np.fill_diagonal(noisy_vals, 1.0)   
             fixed_corr_values = self._get_nearest_correlation_matrix(noisy_corr.values)
             final_corr_df = pd.DataFrame(fixed_corr_values, columns=df.columns, index=df.columns)
         else:
