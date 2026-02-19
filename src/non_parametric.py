@@ -11,6 +11,7 @@ import logging
 import pickle
 import numpy as np
 import pandas as pd
+import os
 from scipy.stats import norm, rankdata
 
 __all__ = ["NonParamGaussianCopulaSynthesizer"]
@@ -52,19 +53,23 @@ class NonParamGaussianCopulaSynthesizer:
     # ============================================================
     # FIXED: Save as an Object (Compatible with SDV loaders)
     # ============================================================
-
     def save(self, filepath):
         """
         Save the ENTIRE object instance to a pickle file.
         This allows sdv.load_synthesizer to work correctly.
+        Automatically creates the directory if it does not exist.
         """
         if not self._fitted:
             raise RuntimeError("Model has not been fitted. Cannot save.")
-            
+
+        # Create directory if needed
+        directory = os.path.dirname(filepath)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+
         with open(filepath, 'wb') as f:
-            # FIX: Dump 'self' (the object), NOT 'self.__dict__' (the dict)
             pickle.dump(self, f)
-            
+
         LOGGER.info(f"Model saved to {filepath}")
 
     def load(self, filepath):
