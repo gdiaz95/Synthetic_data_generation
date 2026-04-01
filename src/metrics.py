@@ -11,6 +11,8 @@ from sdv.evaluation.single_table import run_diagnostic, evaluate_quality
 import json
 import warnings
 
+"""Evaluation helpers for similarity, utility, and report persistence."""
+
 '''
 Resources:
 - https://arxiv.org/html/2501.03941v1
@@ -18,13 +20,13 @@ Resources:
 '''
 
 def get_metrics(data_train, data_gen, data_holdout):
-
-    # calculate metrics
+    # Run MOSTLY AI QA report and keep only structured metrics output.
     _, metrics = qa.report(
         syn_tgt_data=data_gen,
         trn_tgt_data=data_train,
         hol_tgt_data=data_holdout,
     )
+    # Drop the HTML side artifact to keep runs clean/reproducible.
     os.remove('model-report.html')
     return metrics
 
@@ -106,6 +108,7 @@ def run_tstr_evaluation(
     model_synthetic.fit(X_synthetic_train, y_synthetic_train)
     
     # --- 6. Evaluate both on R_test ---
+    # Compare reference (real-trained) vs synthetic-trained model behavior.
     preds_real = model_real.predict(X_real_test)
     score_real = metric_func(y_real_test, preds_real)
     

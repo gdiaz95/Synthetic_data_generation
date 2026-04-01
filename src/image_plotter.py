@@ -3,13 +3,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
+"""Plotting helpers for real-vs-synthetic marginal comparisons."""
+
 def plot_marginals(dataset_name, model, i, real_df, synth_df):
+    # Persist each run under a deterministic folder layout.
     save_dir = f"images/{dataset_name}/{model}/{i}"
     os.makedirs(save_dir, exist_ok=True)
 
     common_cols = [c for c in real_df.columns if c in synth_df.columns]
 
     for col in common_cols:
+        # Compare only non-null values to avoid plotting artifacts.
         real_col = real_df[col].dropna()
         synth_col = synth_df[col].dropna()
 
@@ -18,12 +22,14 @@ def plot_marginals(dataset_name, model, i, real_df, synth_df):
         plt.figure(figsize=(10, 6))
 
         if pd.api.types.is_numeric_dtype(real_col) and pd.api.types.is_numeric_dtype(synth_col):
+            # Density overlays for numerical columns.
             sns.kdeplot(real_col, fill=True, alpha=0.5, label="Original Real", color="steelblue")
             sns.kdeplot(synth_col, fill=True, alpha=0.5, label="Synthetic", color="orange")
             plt.ylabel("Density")
             plt.title(f"Numerical Distribution: {col}")
 
         else:
+            # Normalized bar plots for categorical columns.
             real_counts = real_col.value_counts(normalize=True)
             synth_counts = synth_col.value_counts(normalize=True)
             combined = pd.DataFrame({

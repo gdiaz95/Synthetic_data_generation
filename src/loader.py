@@ -6,6 +6,8 @@ from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
 
+"""Utilities for loading datasets and persisting synthesizer artifacts."""
+
 def load_or_train_synthesizer(training_data, model_path, report_path, synthesizer_to_fit):
     """
     Loads a synthesizer from model_path if it exists, otherwise fits the
@@ -71,6 +73,7 @@ def load_and_prepare_data(dataset_name, metadata_path):
     """
     print(f"--- Loading dataset: {dataset_name} ---")
     
+    # Route to dataset-specific loading logic.
     if dataset_name == 'adults':
         # --- Adults Dataset Logic ---
         print("Loading original 'adults' dataset and metadata...")
@@ -163,6 +166,7 @@ def load_and_prepare_data(dataset_name, metadata_path):
         raise ValueError(f"Dataset '{dataset_name}' is not recognized in src/loader.py")
 
     # --- Generic Metadata Handling ---
+    # Reuse existing metadata when present; otherwise infer and persist it.
     if os.path.exists(metadata_path):
         metadata = Metadata.load_from_json(filepath=metadata_path)
     else:

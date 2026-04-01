@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import rankdata, norm
 import pandas as pd
 
-
+"""Gaussian-space transforms and correlation-based synthetic data generation."""
 
 def transform_dataset_into_gaussian(df, rng=None): # MODIFIED: Accept rng object
     """
