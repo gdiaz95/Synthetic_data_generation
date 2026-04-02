@@ -152,6 +152,102 @@ As experiments run, the pipeline writes artifacts to project subfolders:
 
 If a saved model already exists for a run, the loader will reuse it instead of retraining.
 
+### `images/` directory guide
+
+The `images/` folder is for browsing plots quickly. It has three main types of content:
+
+```text
+images/
+├── <dataset>/
+│   ├── <method>/
+│   │   └── <iteration>/
+│   │       └── <column>.png
+│   └── metrics/
+│       └── <metric>_comparison.png
+├── adults_comparison/
+│   └── <metric>_comparison.png
+├── report_average_comparison/
+│   └── avg_<metric>_comparison.png
+└── report_dataset_averages/
+    └── wandb.txt
+```
+
+What each part means:
+
+- `images/<dataset>/<method>/<iteration>/<column>.png`
+  These are the per-column univariate distribution plots comparing real data vs synthetic data for one run.
+- `images/<dataset>/metrics/`
+  These are dataset-level summary plots comparing methods on each metric.
+- `images/adults_comparison/`
+  These are iteration-by-iteration metric plots for the `adults` dataset only.
+- `images/report_average_comparison/`
+  These are global average plots across datasets.
+
+How to browse `images/` as a new user:
+
+- If you want to inspect one generated run visually, go to `images/<dataset>/<method>/<iteration>/`.
+- If you want to compare methods on one dataset by metric, go to `images/<dataset>/metrics/`.
+- If you want to study regeneration stability across repeated iterations, go to `images/adults_comparison/`.
+- If you want a high-level cross-dataset summary, go to `images/report_average_comparison/`.
+
+Important note about regeneration stability:
+
+- The repeated-iteration stability plots are in `images/adults_comparison/`.
+- In the current repository contents, `adults` is the dataset with multiple saved iterations (`1` to `10`), so it is the only dataset with that full iteration-comparison view.
+- Other datasets currently only have iteration `1` saved in `images/<dataset>/<method>/1/`.
+
+Where specific image types live:
+
+- Regeneration stability images: `images/adults_comparison/`
+- Adults per-metric comparison images: `images/adults_comparison/`
+- Per-dataset per-metric method comparison images: `images/<dataset>/metrics/`
+- Univariate distributions for one run: `images/<dataset>/<method>/<iteration>/<column>.png`
+
+About the univariate distributions:
+
+- These plots are created by `src/image_plotter.py`.
+- Each image is one column from the dataset.
+- Numeric columns are shown as density overlays.
+- Categorical columns are shown as normalized bar plots.
+- Although `adults` is the only dataset with many saved iterations in this repo, the same plotting code is used by all model scripts, so other datasets can produce the same kind of per-column plots when you run them.
+
+### `reports/` directory guide
+
+The `reports/` folder stores the numeric outputs behind the plots.
+
+```text
+reports/
+├── <dataset>/
+│   ├── <method>/
+│   │   └── <iteration>.json
+│   └── report_dataset.json
+└── report_averages/
+    └── report_averages.json
+```
+
+What each part means:
+
+- `reports/<dataset>/<method>/<iteration>.json`
+  The raw report for one run of one method on one dataset.
+- `reports/<dataset>/report_dataset.json`
+  The dataset-level summary across methods used for `images/<dataset>/metrics/`.
+- `reports/report_averages/report_averages.json`
+  The overall summary across datasets used for `images/report_average_comparison/`.
+
+How to browse `reports/` as a new user:
+
+- Start with `reports/<dataset>/report_dataset.json` if you want the simplest summary for one dataset.
+- Open `reports/<dataset>/<method>/<iteration>.json` if you want the detailed numbers for a single run.
+- Open `reports/report_averages/report_averages.json` if you want the broadest cross-dataset summary.
+
+What is inside each per-run JSON report:
+
+- `diagnostic_report`: SDV diagnostic checks such as validity and structure.
+- `quality_report`: SDV quality scores such as overall score, column shapes, and column pair trends.
+- `metrics_qa`: QA metrics such as `overall_accuracy`, `univariate_accuracy`, `bivariate_accuracy`, `discriminator_auc`, and distance/privacy-style metrics.
+- `times`: training and evaluation runtime.
+- `tstr_evaluation`: downstream utility scores from TSTR.
+
 ---
 
 ## Evaluation Summary
