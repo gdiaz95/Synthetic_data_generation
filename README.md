@@ -89,15 +89,26 @@ These names should be passed to `--dataset`.
 
 ### 1) Python environment
 
-This project uses Poetry metadata (`pyproject.toml` + `poetry.lock`).
+This project uses Poetry metadata (`pyproject.toml` + `poetry.lock`) and keeps the lock file under version control for reproducible installs.
 
 If you use Poetry:
 
 ```bash
+# Only needed when dependencies change in pyproject.toml
+# poetry lock
+
 poetry install
+
+# If you want to run scripts directly with `python` (outside `poetry run`)
+source .venv/bin/activate
 ```
 
-If you use plain pip, install equivalent dependencies listed in `pyproject.toml`.
+Recommended workflow:
+
+- **Most users/contributors:** run `poetry install` only.
+- **Only when dependencies change:** run `poetry lock` first, then `poetry install`, and commit the updated `poetry.lock`.
+
+If you use plain pip, install equivalent dependencies listed in `pyproject.toml` (less reproducible than Poetry with a committed lock file).
 
 ### 2) GPU / CPU selection (required)
 
@@ -289,13 +300,16 @@ This script reads report outputs and generates comparison plots across methods a
 # 1) Install dependencies
 poetry install
 
-# 2) Configure runtime environment
+# 2) Activate environment (optional if you prefer `poetry run ...`)
+source .venv/bin/activate
+
+# 3) Configure runtime environment
 printf "CUDA_VISIBLE_DEVICES=0\n" > .env
 
 # Optional if you want W&B logging
 # wandb login
 
-# 3) Run one test experiment
+# 4) Run one test experiment
 python3 script/gaussian_copula.py --dataset car_evaluation --iterations 1
 # Optional: add --enable-wandb
 ```
