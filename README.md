@@ -1,3 +1,10 @@
+# NPGC Implementation
+
+A clean, reusable Python implementation of the NPGC synthesizer is being prepared and will be released separately.
+
+In the meantime, the core implementation used for Educational Data Mining conference (EDM) can be found in this repository.
+
+
 # Synthetic Data Generation for Tabular UCI Datasets
 
 This repository trains and evaluates several synthetic tabular data generators on UCI datasets.
