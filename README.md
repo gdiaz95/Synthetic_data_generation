@@ -1,3 +1,10 @@
+# NPGC Implementation
+
+A clean, reusable Python implementation of the NPGC synthesizer is being prepared and will be released separately.
+
+In the meantime, the core implementation used for Educational Data Mining conference (EDM) can be found in this repository.
+
+
 # Synthetic Data Generation for Tabular UCI Datasets
 
 This repository contains the experiment pipeline used to train, evaluate, and compare multiple tabular synthetic data generators across several UCI datasets.
@@ -199,8 +206,3 @@ python3 script/gaussian_copula.py --dataset car_evaluation --iterations 1
 ```
 
 ---
-
-## Notes
-
-This README is documentation-focused and does not alter experiment logic.
-All functionality remains in existing scripts under `script/` and shared modules under `src/`.
