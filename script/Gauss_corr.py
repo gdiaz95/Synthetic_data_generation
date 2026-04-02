@@ -11,7 +11,6 @@ import os
 import sys
 from sklearn.model_selection import train_test_split
 import time
-from src.wandb_utils import get_wandb_client
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score 
 import argparse
@@ -25,6 +24,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the custom functions from your correlator.py file
+from src.wandb_utils import get_wandb_client
 from src.correlator import generate_synthetic_data
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
 from src.loader import load_and_prepare_data

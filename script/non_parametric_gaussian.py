@@ -11,7 +11,6 @@ import os
 import sys
 import time
 from sklearn.model_selection import train_test_split
-from src.wandb_utils import get_wandb_client
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
 import argparse
@@ -27,6 +26,7 @@ if project_root not in sys.path:
     
 
 # Import the custom functions
+from src.wandb_utils import get_wandb_client
 from src.metrics import get_metrics, run_tstr_evaluation, evaluate_and_save_reports
 from src.loader import load_or_train_synthesizer, load_and_prepare_data
 from dotenv import load_dotenv

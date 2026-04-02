@@ -3,12 +3,13 @@ import json
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from src.wandb_utils import get_wandb_client
+
 
 # --- 1. Shared Configuration ---
 # Moved all shared settings here to be used by all functions
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+from src.wandb_utils import get_wandb_client
 wandb = get_wandb_client()
 
 DATASETS_TO_PROCESS = [
