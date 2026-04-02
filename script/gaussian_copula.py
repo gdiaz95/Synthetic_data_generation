@@ -12,7 +12,7 @@ import sys
 import time
 from sklearn.model_selection import train_test_split
 from sdv.single_table import GaussianCopulaSynthesizer
-import wandb
+from src.wandb_utils import get_wandb_client
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
 import argparse
@@ -43,6 +43,7 @@ def main(args):
     np.random.seed(SEED)
     DATASET_NAME = args.dataset # <-- From args
     TOTAL_ITERATIONS = args.iterations # <-- From args
+    wandb = get_wandb_client(enabled=args.enable_wandb)
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     METADATA_PATH = os.path.join(PROJECT_ROOT, f'metadata/{DATASET_NAME}/metadata.json')
     BASE_MODEL_DIR = os.path.join(PROJECT_ROOT, f'models/{DATASET_NAME}', MODEL_TYPE)
@@ -208,5 +209,11 @@ if __name__ == "__main__":
                         default=1, 
                         help='Number of iterations to run.')
     
+    parser.add_argument(
+        "--enable-wandb",
+        action="store_true",
+        help="Enable Weights & Biases logging (disabled by default)."
+    )
+
     args = parser.parse_args()
     main(args)
