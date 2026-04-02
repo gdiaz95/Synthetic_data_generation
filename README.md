@@ -18,7 +18,7 @@ The codebase is organized around **model-specific runner scripts** in `script/`,
 - Generate synthetic tabular datasets with multiple methods.
 - Evaluate synthetic quality with statistical and privacy-oriented QA metrics.
 - Evaluate downstream utility with TSTR (Train on Synthetic, Test on Real).
-- Track all runs and metrics in Weights & Biases (W&B).
+- Save all metrics to JSON reports by default, with optional Weights & Biases (W&B) logging.
 
 ---
 
@@ -63,7 +63,7 @@ The following synthetic data methods are available as top-level scripts:
 All main model scripts share a similar CLI interface:
 
 ```bash
-python3 script/<method>.py --dataset <dataset_name> --iterations <n>
+python3 script/<method>.py --dataset <dataset_name> --iterations <n> [--enable-wandb]
 ```
 
 ---
@@ -111,13 +111,9 @@ CUDA_VISIBLE_DEVICES=0
 # CUDA_VISIBLE_DEVICES=
 ```
 
-### 3) W&B authentication
+### 3) Optional W&B logging
 
-Because the scripts log to Weights & Biases, ensure you are authenticated:
-
-```bash
-wandb login
-```
+W&B logging is **disabled by default**. If you want online tracking, install `wandb`, authenticate, and pass `--enable-wandb` to a script.
 
 ---
 
@@ -167,7 +163,7 @@ Each run computes:
 - TSTR utility metrics using XGBoost classification accuracy.
 - Timing metrics (training and evaluation time).
 
-These are saved into JSON reports and logged to W&B.
+These are saved into JSON reports. W&B logging is optional with `--enable-wandb`.
 
 ---
 
@@ -199,10 +195,13 @@ poetry install
 
 # 2) Configure runtime environment
 printf "CUDA_VISIBLE_DEVICES=0\n" > .env
-wandb login
+
+# Optional if you want W&B logging
+# wandb login
 
 # 3) Run one test experiment
 python3 script/gaussian_copula.py --dataset car_evaluation --iterations 1
+# Optional: add --enable-wandb
 ```
 
 ---

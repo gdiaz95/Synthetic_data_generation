@@ -13,7 +13,7 @@ import sys
 import time
 from sklearn.model_selection import train_test_split
 from sdv.single_table import TVAESynthesizer
-import wandb
+from src.wandb_utils import get_wandb_client
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
 import argparse
@@ -45,6 +45,7 @@ def main(args):
     random.seed(SEED)
     np.random.seed(SEED)
     TOTAL_ITERATIONS = args.iterations
+    wandb = get_wandb_client(enabled=args.enable_wandb)
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     DATASET_NAME = args.dataset
     METADATA_PATH = os.path.join(PROJECT_ROOT, f'metadata/{DATASET_NAME}/metadata.json')
@@ -231,5 +232,11 @@ if __name__ == "__main__":
                         default=1, 
                         help='Number of iterations to run.')
     
+    parser.add_argument(
+        "--enable-wandb",
+        action="store_true",
+        help="Enable Weights & Biases logging (disabled by default)."
+    )
+
     args = parser.parse_args()
     main(args)
