@@ -57,7 +57,7 @@ The following synthetic data methods are available as top-level scripts:
 - `script/CopulaGAN.py`
 - `script/TVAE.py`
 - `script/gaussian_copula.py`
-- `script/non_parametric_gaussian.py`
+- `script/non_parametric_gaussian.py` (NPGC)
 - `script/Gauss_corr.py` (custom Gaussian-correlated baseline)
 
 All main model scripts share a similar CLI interface:
@@ -129,7 +129,7 @@ wandb login
 bash experiments/run_all.sh
 ```
 
-### Run only the non-parametric Gaussian method
+### Run only the NPGC method
 
 ```bash
 bash experiments/run_non_param_only.sh
