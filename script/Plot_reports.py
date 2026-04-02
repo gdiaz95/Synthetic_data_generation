@@ -3,12 +3,14 @@ import json
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+import sys
 
 # --- 1. Shared Configuration ---
 # Moved all shared settings here to be used by all functions
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 from src.wandb_utils import get_wandb_client
 wandb = get_wandb_client()
 
