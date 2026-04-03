@@ -43,6 +43,43 @@ def _temporary_thread_limit_for_deep_sdv_models(synthesizer):
             else:
                 os.environ[key] = original_value
 
+
+def _is_threading_related_error(error):
+    """Heuristic check for OpenBLAS/MKL/OMP thread-related fit failures."""
+    error_text = str(error).lower()
+    thread_signals = (
+        "openblas",
+        "mkl",
+        "omp",
+        "thread",
+        "blas",
+        "memory regions",
+        "num_threads",
+    )
+    return any(signal in error_text for signal in thread_signals)
+
+
+def _fit_synthesizer_with_thread_fallback(synthesizer, training_data):
+    """Try fit normally first; only apply thread cap and retry on thread errors."""
+    model_name = type(synthesizer).__name__
+
+    if model_name not in _THREAD_LIMITED_SYNTHESIZERS:
+        synthesizer.fit(training_data)
+        return
+
+    try:
+        synthesizer.fit(training_data)
+    except Exception as error:
+        if not _is_threading_related_error(error):
+            raise
+
+        print(
+            "Detected a BLAS/OpenMP threading-related fit error. "
+            "Retrying fit with capped thread env vars..."
+        )
+        with _temporary_thread_limit_for_deep_sdv_models(synthesizer):
+            synthesizer.fit(training_data)
+
 def load_or_train_synthesizer(training_data, model_path, report_path, synthesizer_to_fit):
     """
     Loads a synthesizer from model_path if it exists, otherwise fits the
@@ -90,8 +127,7 @@ def load_or_train_synthesizer(training_data, model_path, report_path, synthesize
         synthesizer = synthesizer_to_fit 
         
         start_time = time.time()
-        with _temporary_thread_limit_for_deep_sdv_models(synthesizer):
-            synthesizer.fit(training_data)
+        _fit_synthesizer_with_thread_fallback(synthesizer, training_data)
         training_time = time.time() - start_time
         
         print(f"Fitting complete. Saving model to '{model_path}'...")

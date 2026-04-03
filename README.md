@@ -110,7 +110,7 @@ Create a `.env` in the repo root, for example:
 CUDA_VISIBLE_DEVICES=0
 # or leave empty for CPU-only
 SDG_MAX_BLAS_THREADS=32
-# Optional safety limit for CTGAN/CopulaGAN/TVAE training threads
+# Optional safety limit used only if CTGAN/CopulaGAN/TVAE hit a thread-related fit error
 ```
 
 ---
