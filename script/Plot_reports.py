@@ -146,16 +146,24 @@ def create_comparison_plots_adults_only():
             print(f"-> Skipping plot for '{metric}' (all data is NaN).")
             continue
             
+        if metric == 'Overall Score':
+            y_val = scores_df[metric] * 100
+            ylabel = 'Overall Score (%)'
+            yticks_extra = [100]
+        else:
+            y_val = scores_df[metric]
+            ylabel = metric
+            yticks_extra = []
+        
         plt.figure(figsize=(14, 8))
-        sns.lineplot(data=scores_df, x='Iteration', y=scores_df[metric] * 100, hue='Method', 
+        sns.lineplot(data=scores_df, x='Iteration', y=y_val, hue='Method', 
                      marker='o', palette=COLOR_MAP, hue_order=METHODS, linewidth=5, markersize=10)
         
         # plt.title(f'{dataset_name.capitalize()}: {metric} Comparison Across Methods', fontsize=18, pad=20)
         plt.xlabel('Iteration', fontsize=20)
-        plt.ylabel('Overall Score (%)', fontsize=20)
-        plt.ylabel('Overall Score (%)' if 'time' not in metric.lower() else 'Value', fontsize=20)
+        plt.ylabel(ylabel, fontsize=20)
         plt.grid(True, which='both', linestyle='--', linewidth=1)
-        plt.yticks(list(plt.yticks()[0]) + [100], fontsize=18)
+        plt.yticks(list(plt.yticks()[0]) + yticks_extra, fontsize=18)
         plt.xticks(range(1, 11), fontsize=18)
         plt.legend(
             loc='lower left',
