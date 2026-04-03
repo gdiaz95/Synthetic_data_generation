@@ -1,12 +1,47 @@
 import os
 import json
 import time
+from contextlib import contextmanager
 import pandas as pd
 from ucimlrepo import fetch_ucirepo
 from sdv.metadata import Metadata
 from sdv.utils import load_synthesizer
 
 """Utilities for loading datasets and persisting synthesizer artifacts."""
+
+_THREAD_LIMITED_SYNTHESIZERS = {"CTGANSynthesizer", "CopulaGANSynthesizer", "TVAESynthesizer"}
+_THREAD_ENV_VARS = ("OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "OMP_NUM_THREADS")
+
+
+@contextmanager
+def _temporary_thread_limit_for_deep_sdv_models(synthesizer):
+    """Temporarily clamp BLAS/OpenMP threads for deep SDV models."""
+    model_name = type(synthesizer).__name__
+    max_threads = os.getenv("SDG_MAX_BLAS_THREADS", "32")
+
+    if model_name not in _THREAD_LIMITED_SYNTHESIZERS:
+        yield
+        return
+
+    original_values = {key: os.environ.get(key) for key in _THREAD_ENV_VARS}
+    try:
+        for key in _THREAD_ENV_VARS:
+            current_value = os.environ.get(key)
+            if current_value is None:
+                os.environ[key] = max_threads
+            else:
+                try:
+                    if int(current_value) > int(max_threads):
+                        os.environ[key] = max_threads
+                except ValueError:
+                    os.environ[key] = max_threads
+        yield
+    finally:
+        for key, original_value in original_values.items():
+            if original_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_value
 
 def load_or_train_synthesizer(training_data, model_path, report_path, synthesizer_to_fit):
     """
@@ -55,7 +90,8 @@ def load_or_train_synthesizer(training_data, model_path, report_path, synthesize
         synthesizer = synthesizer_to_fit 
         
         start_time = time.time()
-        synthesizer.fit(training_data)
+        with _temporary_thread_limit_for_deep_sdv_models(synthesizer):
+            synthesizer.fit(training_data)
         training_time = time.time() - start_time
         
         print(f"Fitting complete. Saving model to '{model_path}'...")
