@@ -6,6 +6,12 @@
 
 A compact, reproducible pipeline for training, evaluating, and comparing tabular synthetic data generators (NPGC and several baselines).
 
+## Citation
+
+**Stable and Privacy-Preserving Synthetic Educational Data with Empirical Marginals: A Copula-Based Approach**  
+Gabriel Diaz Ramos, Lorenzo Luzi, Debshila Basu Mallick, Richard Baraniuk  
+Accepted at EDM 2026 | [Preprint](https://arxiv.org/abs/2604.04195)
+
 ## Table of contents
 
 - [Quick start](#quick-start)
@@ -43,13 +49,13 @@ Example (what to look for): a new run creates `reports/car_evaluation/<method>/1
 .
 ├── experiments/
 │   ├── run_all.sh
-│   └── run_non_param_only.sh
+│   └── run_npgc_only.sh
 ├── script/
 │   ├── CTGAN.py
 │   ├── CopulaGAN.py
 │   ├── Gauss_corr.py
 │   ├── gaussian_copula.py
-│   ├── non_parametric_gaussian.py
+│   ├── npgc_script.py
 │   ├── TVAE.py
 │   └── Plot_reports.py
 ├── src/
@@ -72,7 +78,7 @@ Top-level scripts:
 - `script/CopulaGAN.py`
 - `script/TVAE.py`
 - `script/gaussian_copula.py`
-- `script/non_parametric_gaussian.py` (NPGC)
+- `script/npgc_script.py` (NPGC)
 - `script/Gauss_corr.py` (baseline)
 
 CLI pattern:
@@ -126,7 +132,7 @@ bash experiments/run_all.sh
 Run only the NPGC method:
 
 ```bash
-bash experiments/run_non_param_only.sh
+bash experiments/run_npgc_only.sh
 ```
 
 Run a single method manually (example):

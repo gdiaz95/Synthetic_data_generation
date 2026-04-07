@@ -93,7 +93,7 @@ def load_or_train_synthesizer(training_data, model_path, report_path, synthesize
         print(f"Found existing model at '{model_path}'. Loading...")
         
         # Custom logic: Bypass SDV loader ONLY for the custom synthesizer
-        if type(synthesizer_to_fit).__name__ == "NonParamGaussianCopulaSynthesizer":
+        if type(synthesizer_to_fit).__name__ == "NPGC":
             import pickle
             with open(model_path, 'rb') as f:
                 synthesizer = pickle.load(f)
