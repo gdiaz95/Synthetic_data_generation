@@ -1358,6 +1358,28 @@ test = ["pytest (>=7.2)", "pytest-cov (>=4.0)", "pytest-xdist (>=3.0)"]
 test-extras = ["pytest-mpl", "pytest-randomly"]
 
 [[package]]
+name = "npgc"
+version = "0.1.0"
+description = "Non-Parametric Gaussian Copula synthesizer for tabular data"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "npgc-0.1.0-py3-none-any.whl", hash = "sha256:6a2a29f9cff0b641a4526f0383277a2d0133a5b27cf219b0b9528d7c33b86623"},
+    {file = "npgc-0.1.0.tar.gz", hash = "sha256:e141815fa5fa55b4c1c11b2685177b070b18cf37b5f1d627c61feda1613a1387"},
+]
+
+[package.dependencies]
+numpy = "*"
+pandas = "*"
+scipy = "*"
+
+[package.source]
+type = "legacy"
+url = "https://test.pypi.org/simple"
+reference = "test-pypi"
+
+[[package]]
 name = "numpy"
 version = "2.2.6"
 description = "Fundamental package for array computing in Python"
@@ -3775,4 +3797,4 @@ test = ["pytest (>=8.0.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <3.14"
-content-hash = "8b9c35f45d219e7d44848365f10939e6b9049294545272d767875eb67fc86281"
+content-hash = "b30db753380b681a8ab9eb6c729f5b4524a5963d3ffbd213010e3ddc5d523232"
