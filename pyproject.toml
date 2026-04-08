@@ -29,14 +29,7 @@ dependencies = [
 [tool.poetry]
 package-mode = false
 
-[[tool.poetry.source]]
-name = "test-pypi"
-url = "https://test.pypi.org/simple/"
-priority = "supplemental"
 
-
-[tool.poetry.dependencies]
-npgc = {source = "test-pypi"}
 [virtualenvs]
 in-project = true
 
