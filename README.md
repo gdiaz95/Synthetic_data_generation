@@ -4,13 +4,24 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+This repository provides code to reproduce the experiments presented in the cited paper. For using NPGC as a Python package, see the [NPGC repository](https://github.com/gdiaz95/NPGC).
+
 A compact, reproducible pipeline for training, evaluating, and comparing tabular synthetic data generators (NPGC and several baselines).
 
 ## Citation
 
-**Stable and Privacy-Preserving Synthetic Educational Data with Empirical Marginals: A Copula-Based Approach**  
-Gabriel Diaz Ramos, Lorenzo Luzi, Debshila Basu Mallick, Richard Baraniuk  
-Accepted at EDM 2026 | [Preprint](https://arxiv.org/abs/2604.04195)
+Gabriel Diaz Ramos, Lorenzo Luzi, Debshila Basu Mallick, Richard Baraniuk. *Stable and Privacy-Preserving Synthetic Educational Data with Empirical Marginals: A Copula-Based Approach*. Accepted at EDM 2026 | [Preprint](https://arxiv.org/abs/2604.04195)
+
+BibTeX:
+
+```bibtex
+@misc{diazramos2026npgc,
+  title={Stable and Privacy-Preserving Synthetic Educational Data with Empirical Marginals: A Copula-Based Approach},
+  author={Gabriel Diaz Ramos and Lorenzo Luzi and Debshila Basu Mallick and Richard Baraniuk},
+  year={2026},
+  note={Accepted at EDM 2026 | Preprint}
+}
+```
 
 ## Table of contents
 
@@ -178,6 +189,11 @@ images/
     └── avg_<metric>_comparison.png
 ```
 
+- `images/<dataset>/<method>/<iteration>/<column>.png` are univariate histograms for each feature at each iteration.
+- `images/<dataset>/metrics/<metric>_comparison.png` compare the same metric across all methods for that dataset.
+- `images/report_average_comparison/avg_<metric>_comparison.png` show aggregated metric comparisons across all datasets.
+- `adults` includes a special `adults_comparison/` output with per-metric summaries across the 10 iterations.
+
 `reports/` overview:
 
 ```text
@@ -190,11 +206,13 @@ reports/
     └── report_averages.json
 ```
 
+- `reports/<dataset>/<method>/<iteration>.json` contains per-run metrics for that method and iteration.
+- `reports/<dataset>/report_dataset.json` contains average metrics aggregated for that dataset.
+- `reports/report_averages/report_averages.json` contains metrics averaged across all datasets.
+
 ---
 
-## Goals & evaluation
-
-Goals:
+## Goals
 
 - Generate high-quality synthetic tabular datasets using multiple methods.
 - Measure synthetic quality with SDV diagnostics and QA metrics.
@@ -202,12 +220,6 @@ Goals:
 
 Evaluation outputs per run include SDV quality/diagnostic reports, QA metrics, TSTR scores, and timing information — all saved to `reports/`.
 
----
-
-
-## License
-
-This repository is licensed under the terms in `LICENSE`.
 
 ---
 
