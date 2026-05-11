@@ -33,9 +33,9 @@ BibTeX:
 - [Running experiments](#running-experiments)
 - [Plotting and aggregation](#plotting-and-aggregation)
 - [Output structure](#output-structure)
-- [Goals & evaluation](#goals--evaluation)
-- [Contributing](#contributing)
-- [License](#license)
+- [Goals](#goals)
+- [Reproducibility notes](#reproducibility-notes)
+- [Funding](#funding)
 
 ---
 
@@ -228,3 +228,9 @@ Evaluation outputs per run include SDV quality/diagnostic reports, QA metrics, T
 - Scripts set a global seed (`SEED = 42`) and derive per-iteration seeds.
 - Iterative training is used by most methods; iteration `i+1` may depend on synthetic data from iteration `i`.
 - The first iteration typically splits real data into train/holdout for QA evaluation.
+
+---
+
+## Funding
+
+This research is supported by the National Science Foundation under Award No. 2153481.
