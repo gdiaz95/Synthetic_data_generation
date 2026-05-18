@@ -31,6 +31,7 @@ BibTeX:
 - [Datasets](#datasets)
 - [Environment setup](#environment-setup)
 - [Running experiments](#running-experiments)
+- [OpenStax release generation](#openstax-release-generation)
 - [Plotting and aggregation](#plotting-and-aggregation)
 - [Output structure](#output-structure)
 - [Goals](#goals)
@@ -119,7 +120,7 @@ poetry install
 # optionally: source .venv/bin/activate
 ```
 
-2) GPU / CPU selection
+1) GPU / CPU selection
 
 Create a `.env` in the repo root, for example:
 
@@ -151,6 +152,37 @@ Run a single method manually (example):
 ```bash
 python3 script/CTGAN.py --dataset adults --iterations 10
 ```
+
+---
+
+## OpenStax release generation
+
+Generates synthetic OpenStax activity data and saves all release files to `Openstax_test_data/`.
+
+**Step 1 — generate data and activity comparison plot:**
+
+```bash
+python3 script/generate_openstax_release.py
+```
+
+**Step 2 — generate aggregated comparison plots:**
+
+```bash
+python3 script/Plot_reports.py
+```
+
+Or run both steps at once:
+
+```bash
+bash experiments/run_openstax_release.sh
+```
+
+Output written to `Openstax_test_data/`:
+
+- `assignable_original_release.csv` — original activity records (n=1509)
+- `assignable_synthetic_release.csv` — synthetic activity records (n=1982)
+- `orig_activity.csv` / `synth_activity.csv` — TikZ-ready marginal distributions
+- `openstax_activity_comparison.png` — marginal distribution comparison plot
 
 ---
 
@@ -219,7 +251,6 @@ reports/
 - Evaluate downstream utility using TSTR (train on synthetic, test on real).
 
 Evaluation outputs per run include SDV quality/diagnostic reports, QA metrics, TSTR scores, and timing information — all saved to `reports/`.
-
 
 ---
 
