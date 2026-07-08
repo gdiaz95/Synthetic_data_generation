@@ -10,16 +10,19 @@ A compact, reproducible pipeline for training, evaluating, and comparing tabular
 
 ## Citation
 
-Gabriel Diaz Ramos, Lorenzo Luzi, Debshila Basu Mallick, Richard Baraniuk. *Stable and Privacy-Preserving Synthetic Educational Data with Empirical Marginals: A Copula-Based Approach*. Accepted at EDM 2026 | [Preprint](https://arxiv.org/abs/2604.04195)
+Gabriel Diaz Ramos, Lorenzo Luzi, Debshila Basu Mallick, and Richard Baraniuk. *Stable and Privacy-Preserving Synthetic Educational Data with Empirical Marginals: A Copula-Based Approach*. Proceedings of the 19th International Conference on Educational Data Mining. International Educational Data Mining Society. [PDF](https://educationaldatamining.org/wp-content/uploads/2026/proceedings/2026.EDM.full-papers/2026.EDM.full-papers.119.pdf) | [DOI](https://doi.org/10.5281/zenodo.21040131)
 
 BibTeX:
 
 ```bibtex
-@misc{diazramos2026npgc,
+@inproceedings{diazramos2026npgc,
   title={Stable and Privacy-Preserving Synthetic Educational Data with Empirical Marginals: A Copula-Based Approach},
-  author={Gabriel Diaz Ramos and Lorenzo Luzi and Debshila Basu Mallick and Richard Baraniuk},
+  author={Diaz Ramos, Gabriel and Luzi, Lorenzo and Basu Mallick, Debshila and Baraniuk, Richard},
+  booktitle={Proceedings of the 19th International Conference on Educational Data Mining},
+  publisher={International Educational Data Mining Society},
+  pages={267--279},
   year={2026},
-  note={Accepted at EDM 2026 | Preprint}
+  doi={10.5281/zenodo.21040131}
 }
 ```
 
